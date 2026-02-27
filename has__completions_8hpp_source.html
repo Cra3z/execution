@@ -118,16 +118,18 @@ $(document).ready(function(){initNavTree('has__completions_8hpp_source.html','')
 <div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="comment">// ----------------------------------------------------------------------------</span></div>
 <div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span> </div>
 <div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="keyword">namespace </span>beman::execution::detail {</div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Receiver, <span class="keyword">typename</span> Completions&gt;</div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="keyword">concept </span>has_completions = <span class="keyword">requires</span>(Completions* completions) {</div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>    []&lt;::beman::execution::detail::valid_completion_for&lt;Receiver&gt;... Signatures&gt;(</div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>        <a class="code hl_struct" href="structbeman_1_1execution_1_1completion__signatures.html">::beman::execution::completion_signatures</a>&lt;Signatures...&gt;*) {}(completions);</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>};</div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>} <span class="comment">// namespace beman::execution::detail</span></div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span> </div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="comment">// ----------------------------------------------------------------------------</span></div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span> </div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Receiver, ::beman::execution::detail::val<span class="keywordtype">id</span>_completion_for&lt;Receiver&gt;... Signatures&gt;</div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="keyword">auto</span> has_completions_test(<a class="code hl_struct" href="structbeman_1_1execution_1_1completion__signatures.html">::beman::execution::completion_signatures&lt;Signatures...&gt;</a>*) <span class="keyword">noexcept</span> -&gt; <span class="keywordtype">void</span> {}</div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span> </div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Receiver, <span class="keyword">typename</span> Completions&gt;</div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="keyword">concept </span>has_completions =</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>    <span class="keyword">requires</span>(Completions* completions) { ::beman::execution::detail::has_completions_test&lt;Receiver&gt;(completions); };</div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>} <span class="comment">// namespace beman::execution::detail</span></div>
 <div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="preprocessor">#endif </span><span class="comment">// INCLUDED_BEMAN_EXECUTION_DETAIL_HAS_COMPLETIONS</span></div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="comment">// ----------------------------------------------------------------------------</span></div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span> </div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="preprocessor">#endif </span><span class="comment">// INCLUDED_BEMAN_EXECUTION_DETAIL_HAS_COMPLETIONS</span></div>
 <div class="ttc" id="aconceptbeman_1_1execution_1_1detail_1_1valid__completion__for_html"><div class="ttname"><a href="conceptbeman_1_1execution_1_1detail_1_1valid__completion__for.html">beman::execution::detail::valid_completion_for</a></div><div class="ttdef"><b>Definition:</b> valid_completion_for.hpp:39</div></div>
 <div class="ttc" id="anamespacebeman_1_1execution_1_1detail_html"><div class="ttname"><a href="namespacebeman_1_1execution_1_1detail.html">beman::execution::detail</a></div><div class="ttdef"><b>Definition:</b> affine_on.hpp:65</div></div>
 <div class="ttc" id="anamespacebeman_1_1execution_html"><div class="ttname"><a href="namespacebeman_1_1execution.html">beman::execution</a></div><div class="ttdoc">Namespace for asynchronous operations and their vocabulary.</div><div class="ttdef"><b>Definition:</b> affine_on.hpp:65</div></div>
