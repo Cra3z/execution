@@ -71,7 +71,6 @@ import beman.execution.detail.write_env;
 #include <beman/execution/detail/as_except_ptr.hpp>
 #include <beman/execution/detail/associate.hpp>
 #include <beman/execution/detail/bulk.hpp>
-#include <beman/execution/detail/execution_policy.hpp>
 #include <beman/execution/detail/completion_signature.hpp>
 #include <beman/execution/detail/completion_signatures.hpp>
 #include <beman/execution/detail/connect.hpp>

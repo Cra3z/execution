@@ -18,8 +18,6 @@ import beman.execution;
 
 namespace {
 
-// ==================== bulk tests ====================
-
 auto test_bulk() {
     auto b0 = test_std::bulk(test_std::just(), std::execution::seq, 1, [](int) {});
 
@@ -66,7 +64,6 @@ auto test_bulk() {
         "Completion signatures do not match!");
     test_std::sync_wait(b2);
 
-    // Expected results: element-wise multiplication of a and b
     std::vector<int> expected{9, 20, 33, 52, 70, 90, 112, 136};
 
     for (::std::size_t i = 0; i < results.size(); ++i) {
@@ -144,7 +141,6 @@ auto test_bulk_pipeable() {
         "Completion signatures do not match!");
     test_std::sync_wait(b2);
 
-    // Expected results: element-wise multiplication of a and b
     std::vector<int> expected{9, 20, 33, 52, 70, 90, 112, 136};
 
     for (::std::size_t i = 0; i < results.size(); ++i) {
@@ -152,12 +148,9 @@ auto test_bulk_pipeable() {
     }
 }
 
-// ==================== bulk_chunked tests ====================
-
 auto test_bulk_chunked() {
     int counter = 0;
 
-    // bulk_chunked: f receives (begin, end, args...)
     auto b0 = test_std::bulk_chunked(test_std::just(), std::execution::seq, 5, [&](int begin, int end) {
         for (int i = begin; i < end; ++i) {
             counter += i;
@@ -166,7 +159,6 @@ auto test_bulk_chunked() {
 
     static_assert(test_std::sender<decltype(b0)>);
     test_std::sync_wait(b0);
-    // Default impl calls f(0, 5), so counter = 0+1+2+3+4 = 10
     ASSERT(counter == 10);
 }
 
@@ -206,8 +198,6 @@ auto test_bulk_chunked_pipeable() {
     ASSERT(counter == 10);
 }
 
-// ==================== bulk_unchunked tests ====================
-
 auto test_bulk_unchunked() {
     int counter = 0;
 
@@ -246,8 +236,6 @@ auto test_bulk_unchunked_pipeable() {
     ASSERT(counter == 10);
 }
 
-// ==================== execution policy tests ====================
-
 auto test_execution_policies() {
     int counter = 0;
     test_std::sync_wait(test_std::bulk(test_std::just(), std::execution::par, 5, [&](int i) { counter += i; }));
@@ -262,15 +250,13 @@ auto test_execution_policies() {
     ASSERT(counter == 10);
 }
 
-// ==================== edge case & exception tests ====================
-
 auto test_bulk_shape_zero() {
-    // shape=0: no invocations, should still complete successfully
     int counter = 0;
     test_std::sync_wait(test_std::bulk(test_std::just(), std::execution::seq, 0, [&](int) { counter++; }));
     ASSERT(counter == 0);
 
-    test_std::sync_wait(test_std::bulk_chunked(test_std::just(), std::execution::seq, 0, [&](int, int) { counter++; }));
+    test_std::sync_wait(
+        test_std::bulk_chunked(test_std::just(), std::execution::seq, 0, [&](int, int) { counter++; }));
     ASSERT(counter == 0);
 
     test_std::sync_wait(test_std::bulk_unchunked(test_std::just(), std::execution::seq, 0, [&](int) { counter++; }));
@@ -278,7 +264,6 @@ auto test_bulk_shape_zero() {
 }
 
 auto test_bulk_exception_handling() {
-    // bulk should catch exceptions from f and forward as set_error
     bool error_caught = false;
 
     auto sndr = test_std::bulk(test_std::just(), std::execution::seq, 5, [](int i) {
@@ -343,7 +328,6 @@ auto test_bulk_unchunked_noexcept() {
 }
 
 auto test_bulk_shape_one() {
-    // shape=1: exactly one invocation
     int counter = 0;
     test_std::sync_wait(test_std::bulk(test_std::just(), std::execution::seq, 1, [&](int i) {
         ASSERT(i == 0);
@@ -368,7 +352,6 @@ auto test_bulk_shape_one() {
 }
 
 auto test_bulk_chunked_covers_full_range() {
-    // Default impl should call f(0, shape) covering the entire range
     std::size_t seen_begin = 999;
     std::size_t seen_end   = 999;
     int         call_count = 0;
@@ -386,7 +369,6 @@ auto test_bulk_chunked_covers_full_range() {
 }
 
 auto test_bulk_multiple_values() {
-    // Test bulk with multiple predecessor values
     int sum_a = 0;
     int sum_b = 0;
 
@@ -395,8 +377,8 @@ auto test_bulk_multiple_values() {
         sum_b += b + i;
     }));
 
-    ASSERT(sum_a == 30);             // 10 * 3
-    ASSERT(sum_b == 60 + 0 + 1 + 2); // 20*3 + (0+1+2) = 63
+    ASSERT(sum_a == 30);
+    ASSERT(sum_b == 60 + 0 + 1 + 2);
 }
 
 } // namespace
