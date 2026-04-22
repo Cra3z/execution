@@ -68,7 +68,9 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/decays_to.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/default_domain.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/default_impls.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/dependent_sender.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/dependent_sender_error.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/execution_policy.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/emplace_from.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/env.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/env_of_t.hpp
@@ -90,6 +92,7 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_domain_early.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_domain_late.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_env.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_forward_progress_guarantee.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_scheduler.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_stop_token.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/has_as_awaitable.hpp
@@ -158,6 +161,7 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/sender_for.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/sender_has_affine_on.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/sender_in.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/sender_to.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/sends_stopped.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/set_error.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/set_stopped.hpp
@@ -180,16 +184,19 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stoppable_token.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stopped_as_error.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stopped_as_optional.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/store_receiver.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/suppress_pop.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/suppress_push.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/suspend_complete.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/sync_wait.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/sync_wait_with_variant.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/tag_of_t.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/then.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/transform_sender.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/try_query.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/type_list.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/unspecified_promise.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/unstoppable.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/unstoppable_token.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/valid_completion_for.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/valid_completion_signatures.hpp
@@ -211,6 +218,8 @@ if(BEMAN_USE_MODULES)
         PUBLIC
             FILE_SET CXX_MODULES
                 FILES
+                    execution.cppm
+                    execution-detail.cppm
                     affine_on.cppm
                     allocator_aware_move.cppm
                     almost_scheduler.cppm
@@ -235,19 +244,19 @@ if(BEMAN_USE_MODULES)
                     class_type.cppm
                     completion_domain.cppm
                     completion_signature.cppm
-                    completion_signatures.cppm
                     completion_signatures_for.cppm
                     completion_signatures_of_t.cppm
+                    completion_signatures.cppm
                     completion_tag.cppm
-                    connect.cppm
-                    connect_all.cppm
                     connect_all_result.cppm
+                    connect_all.cppm
                     connect_awaitable.cppm
                     connect_result_t.cppm
+                    connect.cppm
                     continues_on.cppm
-                    counting_scope.cppm
                     counting_scope_base.cppm
                     counting_scope_join.cppm
+                    counting_scope.cppm
                     decayed_same_as.cppm
                     decayed_tuple.cppm
                     decayed_type_list.cppm
@@ -255,16 +264,16 @@ if(BEMAN_USE_MODULES)
                     decays_to.cppm
                     default_domain.cppm
                     default_impls.cppm
+                    dependent_sender.cppm
                     dependent_sender_error.cppm
+                    execution_policy.cppm
                     emplace_from.cppm
                     enable_sender.cppm
-                    env.cppm
                     env_of_t.cppm
                     env_promise.cppm
                     env_type.cppm
+                    env.cppm
                     error_types_of_t.cppm
-                    execution-detail.cppm
-                    execution.cppm
                     forward_like.cppm
                     forwarding_query.cppm
                     fwd_env.cppm
@@ -276,10 +285,11 @@ if(BEMAN_USE_MODULES)
                     get_completion_scheduler.cppm
                     get_completion_signatures.cppm
                     get_delegation_scheduler.cppm
-                    get_domain.cppm
                     get_domain_early.cppm
                     get_domain_late.cppm
+                    get_domain.cppm
                     get_env.cppm
+                    get_forward_progress_guarantee.cppm
                     get_scheduler.cppm
                     get_stop_token.cppm
                     has_as_awaitable.cppm
@@ -305,8 +315,8 @@ if(BEMAN_USE_MODULES)
                     make_sender.cppm
                     matching_sig.cppm
                     meta_combine.cppm
-                    meta_contain_same.cppm
                     meta_contains.cppm
+                    meta_contain_same.cppm
                     meta_filter.cppm
                     meta_prepend.cppm
                     meta_size.cppm
@@ -316,70 +326,74 @@ if(BEMAN_USE_MODULES)
                     movable_value.cppm
                     nested_sender_has_affine_on.cppm
                     never_stop_token.cppm
+                    notify.cppm
                     non_assignable.cppm
                     nostopstate.cppm
                     nothrow_callable.cppm
-                    notify.cppm
-                    on.cppm
                     on_stop_request.cppm
-                    operation_state.cppm
+                    on.cppm
                     operation_state_task.cppm
+                    operation_state.cppm
                     product_type.cppm
                     prop.cppm
                     query_with_default.cppm
                     queryable.cppm
                     read_env.cppm
-                    receiver.cppm
                     receiver_of.cppm
+                    receiver.cppm
                     run_loop.cppm
                     sched_attrs.cppm
                     sched_env.cppm
-                    schedule.cppm
                     schedule_from.cppm
                     schedule_result_t.cppm
-                    scheduler.cppm
+                    schedule.cppm
                     scheduler_t.cppm
+                    scheduler.cppm
                     scope_association.cppm
                     scope_token.cppm
-                    sender.cppm
-                    sender_adaptor.cppm
                     sender_adaptor_closure.cppm
+                    sender_adaptor.cppm
                     sender_awaitable.cppm
                     sender_decompose.cppm
                     sender_for.cppm
                     sender_has_affine_on.cppm
                     sender_in.cppm
+                    sender.cppm
+                    sender_to.cppm
                     sends_stopped.cppm
                     set_error.cppm
                     set_stopped.cppm
                     set_value.cppm
                     simple_allocator.cppm
                     simple_counting_scope.cppm
-                    single_sender.cppm
                     single_sender_value_type.cppm
-                    spawn.cppm
+                    single_sender.cppm
                     spawn_future.cppm
                     spawn_get_allocator.cppm
+                    spawn.cppm
                     start.cppm
                     starts_on.cppm
                     state_type.cppm
+                    stoppable_callback_for.cppm
                     stop_callback_for_t.cppm
                     stop_source.cppm
                     stop_token_of_t.cppm
                     stop_when.cppm
-                    stoppable_callback_for.cppm
                     stoppable_source.cppm
                     stoppable_token.cppm
                     stopped_as_error.cppm
                     stopped_as_optional.cppm
+                    store_receiver.cppm
                     suspend_complete.cppm
                     sync_wait.cppm
+                    sync_wait_with_variant.cppm
                     tag_of_t.cppm
                     then.cppm
                     transform_sender.cppm
                     try_query.cppm
                     type_list.cppm
                     unspecified_promise.cppm
+                    unstoppable.cppm
                     unstoppable_token.cppm
                     valid_completion_for.cppm
                     valid_completion_signatures.cppm

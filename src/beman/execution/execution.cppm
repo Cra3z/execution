@@ -7,82 +7,86 @@ module;
 
 export module beman.execution;
 
-//-dk:TODO import beman.execution.detail.split;
-export import beman.execution.detail.affine_on;
-export import beman.execution.detail.associate; // [exec.associate]
-export import beman.execution.detail.bulk;
-export import beman.execution.detail.completion_signatures_of_t; // [exec.getcomplsigs], completion signatures
-export import beman.execution.detail.completion_signatures;      // [exec.util.cmplsig]
-export import beman.execution.detail.connect_result_t; // [exec.connect], the connect sender algorithm
-export import beman.execution.detail.connect;
-export import beman.execution.detail.continues_on;
-export import beman.execution.detail.counting_scope;
-export import beman.execution.detail.default_domain;
-export import beman.execution.detail.env_of_t;
-export import beman.execution.detail.env;
-export import beman.execution.detail.error_types_of_t; // [exec.getcomplsigs], completion signatures
-export import beman.execution.detail.forwarding_query;
-export import beman.execution.detail.get_allocator;
-export import beman.execution.detail.get_completion_domain;
-export import beman.execution.detail.get_completion_scheduler;
-export import beman.execution.detail.get_completion_signatures; // [exec.getcomplsigs], completion signatures
-export import beman.execution.detail.get_delegation_scheduler;
-export import beman.execution.detail.get_domain;
-export import beman.execution.detail.get_env;
-export import beman.execution.detail.get_scheduler;
-export import beman.execution.detail.get_stop_token;
-export import beman.execution.detail.indeterminate_domain;
-export import beman.execution.detail.inline_scheduler;
-export import beman.execution.detail.inplace_stop_source; // [stopsource.inplace], class inplace_stop_source
-export import beman.execution.detail.into_variant;
-export import beman.execution.detail.just;
-export import beman.execution.detail.let;
-export import beman.execution.detail.never_stop_token;
-export import beman.execution.detail.on;
-export import beman.execution.detail.operation_state; // [exec.opstate], operation states
-export import beman.execution.detail.prop;
-export import beman.execution.detail.read_env;
-export import beman.execution.detail.run_loop;
-export import beman.execution.detail.schedule_from;
-export import beman.execution.detail.schedule_result_t;
-export import beman.execution.detail.schedule;
-export import beman.execution.detail.scheduler_t;
-export import beman.execution.detail.scheduler; // [exec.sched], schedulers
-export import beman.execution.detail.scope_association; // [exec.scope.concepts]
-export import beman.execution.detail.scope_token;       // [exec.scope.concepts]
-export import beman.execution.detail.set_error;
-export import beman.execution.detail.set_stopped;
-export import beman.execution.detail.set_value;
-export import beman.execution.detail.simple_counting_scope;
-export import beman.execution.detail.spawn_future;
-export import beman.execution.detail.spawn;
-export import beman.execution.detail.start;
-export import beman.execution.detail.starts_on;
-export import beman.execution.detail.stop_callback_for_t;
-export import beman.execution.detail.stop_source; // [stopsource], class stop_source
-export import beman.execution.detail.stop_token_of_t;
-export import beman.execution.detail.stoppable_source;
-export import beman.execution.detail.stopped_as_error;
-export import beman.execution.detail.stopped_as_optional;
-export import beman.execution.detail.sync_wait;
-export import beman.execution.detail.tag_of_t; // [exec.getcomplsigs], completion signatures
-export import beman.execution.detail.then;
-export import beman.execution.detail.value_types_of_t; // [exec.getcomplsigs], completion signatures
-export import beman.execution.detail.when_all_with_variant;
-export import beman.execution.detail.when_all;
-export import beman.execution.detail.with_awaitable_senders; // [exec.with.awaitable.senders]
-export import beman.execution.detail.write_env;
+import beman.execution.detail.affine_on;
 import beman.execution.detail.apply_sender;
 import beman.execution.detail.as_awaitable;
+export import beman.execution.detail.associate; // [exec.associate]
+import beman.execution.detail.bulk;
 import beman.execution.detail.check_type_alias_exist;
+export import beman.execution.detail.completion_signatures;      // [exec.util.cmplsig]
+export import beman.execution.detail.completion_signatures_of_t; // [exec.getcomplsigs], completion signatures
+import beman.execution.detail.connect;
+export import beman.execution.detail.connect_result_t; // [exec.connect], the connect sender algorithm
+import beman.execution.detail.continues_on;
+import beman.execution.detail.counting_scope;
+import beman.execution.detail.default_domain;
+export import beman.execution.detail.indeterminate_domain;
+export import beman.execution.detail.env;
+export import beman.execution.detail.env_of_t;
+export import beman.execution.detail.error_types_of_t; // [exec.getcomplsigs], completion signatures
+export import beman.execution.detail.execution_policy;
+import beman.execution.detail.forwarding_query;
+import beman.execution.detail.get_allocator;
 import beman.execution.detail.get_await_completion_adaptor;
+export import beman.execution.detail.get_completion_scheduler;
+export import beman.execution.detail.get_completion_signatures; // [exec.getcomplsigs], completion signatures
+import beman.execution.detail.get_delegation_scheduler;
+import beman.execution.detail.get_domain;
+import beman.execution.detail.get_completion_domain;
+import beman.execution.detail.get_env;
+import beman.execution.detail.get_forward_progress_guarantee;
+import beman.execution.detail.get_scheduler;
+import beman.execution.detail.get_stop_token;
+export import beman.execution.detail.inplace_stop_source; // [stopsource.inplace], class inplace_stop_source
+import beman.execution.detail.into_variant;
+export import beman.execution.detail.just;
+import beman.execution.detail.let;
+import beman.execution.detail.never_stop_token;
 import beman.execution.detail.nostopstate;
+import beman.execution.detail.on;
+export import beman.execution.detail.operation_state; // [exec.opstate], operation states
+import beman.execution.detail.prop;
+import beman.execution.detail.read_env;
+import beman.execution.detail.run_loop;
+import beman.execution.detail.schedule;
+import beman.execution.detail.schedule_from;
+export import beman.execution.detail.schedule_result_t;
+export import beman.execution.detail.scheduler; // [exec.sched], schedulers
+export import beman.execution.detail.scheduler_t;
+export import beman.execution.detail.scope_association; // [exec.scope.concepts]
+export import beman.execution.detail.scope_token;       // [exec.scope.concepts]
 import beman.execution.detail.sender_adaptor_closure;
+import beman.execution.detail.set_error;
+import beman.execution.detail.set_stopped;
+import beman.execution.detail.set_value;
+import beman.execution.detail.simple_counting_scope;
+import beman.execution.detail.spawn;
+import beman.execution.detail.spawn_future;
+//-dk:TODO import beman.execution.detail.split;
+import beman.execution.detail.start;
+import beman.execution.detail.starts_on;
+export import beman.execution.detail.stop_callback_for_t;
+export import beman.execution.detail.stop_source; // [stopsource], class stop_source
+import beman.execution.detail.stop_token_of_t;
+import beman.execution.detail.stoppable_source;
+import beman.execution.detail.stopped_as_error;
+import beman.execution.detail.stopped_as_optional;
+import beman.execution.detail.sync_wait;
+import beman.execution.detail.sync_wait_with_variant;
+export import beman.execution.detail.tag_of_t; // [exec.getcomplsigs], completion signatures
+import beman.execution.detail.then;
 import beman.execution.detail.transform_sender;
 import beman.execution.detail.valid_completion_for;
+export import beman.execution.detail.value_types_of_t; // [exec.getcomplsigs], completion signatures
+import beman.execution.detail.when_all;
+import beman.execution.detail.when_all_with_variant;
+export import beman.execution.detail.with_awaitable_senders; // [exec.with.awaitable.senders]
+import beman.execution.detail.write_env;
+import beman.execution.detail.inline_scheduler;
 
 // [stoptoken.concepts], stop token concepts
 export import beman.execution.detail.stoppable_token;
+export import beman.execution.detail.unstoppable;
 export import beman.execution.detail.unstoppable_token;
 
 // [exec.recv], receivers
@@ -92,8 +96,8 @@ export import beman.execution.detail.receiver_of;
 // [exec.snd], senders
 export import beman.execution.detail.sender;
 export import beman.execution.detail.sender_in;
-//-dk:TODO export using ::beman::execution::sender_to;
-
+export import beman.execution.detail.sender_to;
+export import beman.execution.detail.dependent_sender;
 export import beman.execution.detail.sends_stopped;
 
 namespace beman::execution {
@@ -132,17 +136,19 @@ export using ::beman::execution::get_stop_token;
 export using ::beman::execution::stop_token_of_t;
 
 export using ::beman::execution::get_domain_t;
+export using ::beman::execution::get_completion_domain_t;
 export using ::beman::execution::get_scheduler_t;
 export using ::beman::execution::get_delegation_scheduler_t;
 export using ::beman::execution::get_await_completion_adaptor_t;
-//-dk:TODO export using ::beman::execution::get_forward_progress_guarantee_t;
+export using ::beman::execution::get_forward_progress_guarantee_t;
 
 export using ::beman::execution::get_domain;
+export using ::beman::execution::get_completion_domain;
 export using ::beman::execution::get_scheduler;
 export using ::beman::execution::get_delegation_scheduler;
 export using ::beman::execution::get_await_completion_adaptor;
-//-dk:TODO export using ::beman::execution::forward_progress_guarantee;
-//-dk:TODO export using ::beman::execution::get_forward_progress_guarantee;
+export using ::beman::execution::forward_progress_guarantee;
+export using ::beman::execution::get_forward_progress_guarantee;
 
 export using ::beman::execution::get_env_t;
 export using ::beman::execution::get_env;
@@ -199,6 +205,8 @@ export using ::beman::execution::let_value_t;
 export using ::beman::execution::let_error_t;
 export using ::beman::execution::let_stopped_t;
 export using ::beman::execution::bulk_t;
+export using ::beman::execution::bulk_chunked_t;
+export using ::beman::execution::bulk_unchunked_t;
 //-dk:TODO export using ::beman::execution::split_t;
 export using ::beman::execution::when_all_t;
 export using ::beman::execution::when_all_with_variant_t;
@@ -217,6 +225,8 @@ export using ::beman::execution::let_value;
 export using ::beman::execution::let_error;
 export using ::beman::execution::let_stopped;
 export using ::beman::execution::bulk;
+export using ::beman::execution::bulk_chunked;
+export using ::beman::execution::bulk_unchunked;
 //-dk:TODO export using ::beman::execution::split;
 export using ::beman::execution::when_all;
 export using ::beman::execution::when_all_with_variant;
@@ -233,10 +243,10 @@ export using ::beman::execution::run_loop;
 
 // [exec.consumers], consumers
 export using ::beman::execution::sync_wait_t;
-//-dk:TODO export using ::beman::execution::sync_wait_with_variant_t;
+export using ::beman::execution::sync_wait_with_variant_t;
 
 export using ::beman::execution::sync_wait;
-//-dk:TODO export using ::beman::execution::sync_wait_with_variant;
+export using ::beman::execution::sync_wait_with_variant;
 
 // [exec.as.awaitable]
 export using ::beman::execution::as_awaitable_t;

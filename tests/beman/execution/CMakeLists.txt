@@ -63,6 +63,7 @@ list(
     exec-stopped-as-error.test
     exec-stopped-as-optional.test
     exec-sync-wait.test
+    exec-sync-wait-with-variant.test
     exec-then.test
     exec-utils-cmplsigs.test
     exec-when-all.test
@@ -113,18 +114,6 @@ list(
     utilities.test
 )
 
-option(
-    BEMAN_EXECUTION_TEST_CASE
-    "The name of the test ase to build. Values: e.g., stoptoken-never."
-    ""
-)
-
-if(BEMAN_EXECUTION_TEST_CASE)
-    if(NOT ${BEMAN_EXECUTION_TEST_CASE} STREQUAL "*")
-        set(execution_tests ${BEMAN_EXECUTION_TEST_CASE}.test)
-    endif()
-endif()
-
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 foreach(test ${execution_tests})
@@ -173,5 +162,6 @@ if(BEMAN_EXECUTION_INSTALL_CONFIG_FILE_PACKAGE AND NOT CMAKE_SKIP_INSTALL_RULES)
             "-D CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}"
             "-D CMAKE_CXX_STANDARD_REQUIRED=${CMAKE_CXX_STANDARD_REQUIRED}"
             "-D CMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/stagedir"
+            "-D CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
     )
 endif()
