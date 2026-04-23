@@ -59,8 +59,9 @@ struct sync_wait_with_variant_t {
     template <typename Sndr>
         requires requires { typename ::beman::execution::detail::sync_wait_with_variant_result_type<Sndr>; }
     auto operator()(Sndr&& sndr) const {
+        // P3826R5: Use default_domain for apply_sender
         return ::beman::execution::apply_sender(
-            ::beman::execution::detail::get_domain_early(sndr), *this, ::std::forward<Sndr>(sndr));
+            ::beman::execution::default_domain{}, *this, ::std::forward<Sndr>(sndr));
     }
 };
 

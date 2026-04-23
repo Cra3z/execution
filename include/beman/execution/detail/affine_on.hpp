@@ -21,7 +21,6 @@ import beman.execution.detail.env;
 import beman.execution.detail.forward_like;
 import beman.execution.detail.fwd_env;
 import beman.execution.detail.get_completion_signatures;
-import beman.execution.detail.get_domain_early;
 import beman.execution.detail.get_scheduler;
 import beman.execution.detail.get_stop_token;
 import beman.execution.detail.make_sender;
@@ -38,14 +37,13 @@ import beman.execution.detail.sender_has_affine_on;
 import beman.execution.detail.set_value;
 import beman.execution.detail.store_receiver;
 import beman.execution.detail.tag_of_t;
-import beman.execution.detail.transform_sender;
 import beman.execution.detail.unstoppable;
 import beman.execution.detail.write_env;
 #else
+#include <beman/execution/detail/completion_signatures_of_t.hpp>
 #include <beman/execution/detail/env.hpp>
 #include <beman/execution/detail/forward_like.hpp>
 #include <beman/execution/detail/fwd_env.hpp>
-#include <beman/execution/detail/get_domain_early.hpp>
 #include <beman/execution/detail/get_scheduler.hpp>
 #include <beman/execution/detail/get_stop_token.hpp>
 #include <beman/execution/detail/make_sender.hpp>
@@ -60,7 +58,6 @@ import beman.execution.detail.write_env;
 #include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/store_receiver.hpp>
 #include <beman/execution/detail/tag_of_t.hpp>
-#include <beman/execution/detail/transform_sender.hpp>
 #include <beman/execution/detail/unstoppable.hpp>
 #include <beman/execution/detail/write_env.hpp>
 #endif
@@ -100,10 +97,8 @@ struct affine_on_t : ::beman::execution::sender_adaptor_closure<affine_on_t> {
      */
     template <::beman::execution::sender Sender>
     auto operator()(Sender&& sender) const {
-        return ::beman::execution::transform_sender(
-            ::beman::execution::detail::get_domain_early(sender),
-            ::beman::execution::detail::make_sender(
-                *this, ::beman::execution::env<>{}, ::std::forward<Sender>(sender)));
+        return ::beman::execution::detail::make_sender(
+            *this, ::beman::execution::env<>{}, ::std::forward<Sender>(sender));
     }
 
     /**

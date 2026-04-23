@@ -26,8 +26,8 @@ struct env_base {
     Env env_;
 };
 
-template <typename E, typename Q>
-concept has_query = requires(const E& e) { e.query(::std::declval<Q>()); };
+template <typename E, typename Q, typename... Args>
+concept has_query = requires(const E& e) { e.query(::std::declval<Q>(), ::std::declval<Args>()...); };
 
 template <typename Q, typename... E>
 struct find_env;
@@ -41,6 +41,23 @@ template <typename Q, typename E0, typename... E>
 struct find_env<Q, E0, E...> {
     using type = typename find_env<Q, E...>::type;
 };
+
+// find_env variant that supports additional args
+template <typename...>
+struct args_list {};
+
+template <typename Q, typename ArgsList, typename... E>
+struct find_env_with_args;
+template <typename Q, typename... Args, typename E0, typename... E>
+    requires has_query<E0, Q, Args...>
+struct find_env_with_args<Q, args_list<Args...>, E0, E...> {
+    using type = E0;
+};
+template <typename Q, typename... Args, typename E0, typename... E>
+    requires(not has_query<E0, Q, Args...>)
+struct find_env_with_args<Q, args_list<Args...>, E0, E...> {
+    using type = typename find_env_with_args<Q, args_list<Args...>, E...>::type;
+};
 } // namespace beman::execution::detail
 
 // ----------------------------------------------------------------------------
@@ -50,11 +67,13 @@ template <::beman::execution::detail::queryable... Envs>
 struct env : ::beman::execution::detail::env_base<Envs>... {
     [[no_unique_address]] ::beman::execution::detail::non_assignable na_{};
 
-    template <typename Q>
-        requires(::beman::execution::detail::has_query<Envs, Q> || ...)
-    constexpr auto query(Q q) const noexcept -> decltype(auto) {
-        using E = typename ::beman::execution::detail::find_env<Q, Envs...>::type;
-        return q(static_cast<const ::beman::execution::detail::env_base<E>&>(*this).env_);
+    template <typename Q, typename... Args>
+        requires(::beman::execution::detail::has_query<Envs, Q, Args...> || ...)
+    constexpr auto query(Q q, Args&&... args) const noexcept -> decltype(auto) {
+        using E = typename ::beman::execution::detail::find_env_with_args<
+            Q, ::beman::execution::detail::args_list<Args...>, Envs...>::type;
+        return static_cast<const ::beman::execution::detail::env_base<E>&>(*this).env_.query(
+            q, ::std::forward<Args>(args)...);
     }
 };
 

@@ -13,21 +13,21 @@ import std;
 #include <utility>
 #endif
 #if BEMAN_HAS_MODULES
+import beman.execution.detail.completion_tag;
 import beman.execution.detail.default_domain;
+import beman.execution.detail.forwarding_query;
 import beman.execution.detail.get_completion_scheduler;
 import beman.execution.detail.queryable;
 import beman.execution.detail.scheduler;
-import beman.execution.detail.set_error;
-import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
 import beman.execution.detail.try_query;
 #else
+#include <beman/execution/detail/completion_tag.hpp>
 #include <beman/execution/detail/default_domain.hpp>
+#include <beman/execution/detail/forwarding_query.hpp>
 #include <beman/execution/detail/get_completion_scheduler.hpp>
 #include <beman/execution/detail/queryable.hpp>
 #include <beman/execution/detail/scheduler.hpp>
-#include <beman/execution/detail/set_error.hpp>
-#include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/try_query.hpp>
 #endif
@@ -36,27 +36,42 @@ import beman.execution.detail.try_query;
 
 namespace beman::execution::detail {
 template <typename T = void>
-    requires(::std::same_as<T, void> || ::std::same_as<T, ::beman::execution::set_error_t> ||
-             ::std::same_as<T, ::beman::execution::set_stopped_t> ||
-             ::std::same_as<T, ::beman::execution::set_value_t>)
-struct get_completion_domain_t {
+    requires ::std::same_as<T, void> || ::beman::execution::detail::completion_tag<T>
+struct get_completion_domain_t : ::beman::execution::forwarding_query_t {
     template <typename Q, typename... E>
-    auto operator()(Q&& q, E&&... e) const {
-        using domain = decltype([&]{
-            if constexpr (requires{ ::beman::execution::detail::try_query(::std::forward<Q>(q), get_completion_domain_t<T>{}, ::std::forward<E>(e)...); }) {
-                return ::beman::execution::detail::try_query(::std::forward<Q>(q), get_completion_domain_t<T>{}, ::std::forward<E>(e)...);
-            } else if constexpr (::std::same_as<T, void>) {
-                return get_completion_domain_t<::beman::execution::set_value_t>()(::std::forward<Q>(q), ::std::forward<E>(e)...);
-            }
-            else if constexpr (::beman::execution::detail::try_query(::beman::execution::get_completion_scheduler<T>(q, e...), get_completion_domain_t<::beman::execution::set_value_t>{}, ::std::forward<Q>(q), ::std::forward<E>(e)...)) {
-                return ::beman::execution::detail::try_query(::beman::execution::get_completion_scheduler<T>(q, e...), get_completion_domain_t<::beman::execution::set_value_t>{}, ::std::forward<Q>(q), ::std::forward<E>(e)...);
-            } else if constexpr (::beman::execution::scheduler<Q> && 0u != sizeof...(E)) {
-                return ::beman::execution::default_domain{};
-            }
-            else {
-                static_assert(::std::same_as<T, int>, "get_completion_domain requires the environment to be queryable for get_completion_domain or get_completion_scheduler");
-            }
-        }());
+    static auto impl(Q&& q, E&&... e) noexcept {
+        if constexpr (requires {
+                          ::beman::execution::detail::try_query(
+                              ::std::forward<Q>(q), get_completion_domain_t<T>{}, ::std::forward<E>(e)...);
+                      }) {
+            return ::beman::execution::detail::try_query(
+                ::std::forward<Q>(q), get_completion_domain_t<T>{}, ::std::forward<E>(e)...);
+        } else if constexpr (::std::same_as<T, void>) {
+            return get_completion_domain_t<::beman::execution::set_value_t>()(::std::forward<Q>(q),
+                                                                              ::std::forward<E>(e)...);
+        } else if constexpr (requires {
+                                 ::beman::execution::detail::try_query(
+                                     ::beman::execution::get_completion_scheduler<T>(q, e...),
+                                     get_completion_domain_t<::beman::execution::set_value_t>{},
+                                     ::std::forward<Q>(q),
+                                     ::std::forward<E>(e)...);
+                             }) {
+            return ::beman::execution::detail::try_query(::beman::execution::get_completion_scheduler<T>(q, e...),
+                                                         get_completion_domain_t<::beman::execution::set_value_t>{},
+                                                         ::std::forward<Q>(q),
+                                                         ::std::forward<E>(e)...);
+        } else if constexpr (::beman::execution::scheduler<Q> && 0u != sizeof...(E)) {
+            return ::beman::execution::default_domain{};
+        } else {
+            static_assert(::std::same_as<T, int>,
+                          "get_completion_domain requires the environment to be queryable for get_completion_domain "
+                          "or get_completion_scheduler");
+        }
+    };
+
+    template <::beman::execution::detail::queryable Q, typename... E>
+    auto operator()(Q&&, E&&...) const noexcept {
+        using domain = decltype((impl)(::std::declval<Q>(), ::std::declval<E>()...));
         static_assert(noexcept(domain{}), "the domain's default constructor has to be noexcept");
         return domain{};
     }

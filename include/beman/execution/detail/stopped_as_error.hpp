@@ -14,7 +14,6 @@ import std;
 #endif
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.forward_like;
-import beman.execution.detail.get_domain_early;
 import beman.execution.detail.just;
 import beman.execution.detail.let;
 import beman.execution.detail.make_sender;
@@ -22,10 +21,8 @@ import beman.execution.detail.movable_value;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.sender_for;
-import beman.execution.detail.transform_sender;
 #else
 #include <beman/execution/detail/forward_like.hpp>
-#include <beman/execution/detail/get_domain_early.hpp>
 #include <beman/execution/detail/just.hpp>
 #include <beman/execution/detail/let.hpp>
 #include <beman/execution/detail/make_sender.hpp>
@@ -33,7 +30,6 @@ import beman.execution.detail.transform_sender;
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor_closure.hpp>
 #include <beman/execution/detail/sender_for.hpp>
-#include <beman/execution/detail/transform_sender.hpp>
 #endif
 
 namespace beman::execution::detail {
@@ -53,10 +49,8 @@ struct stopped_as_error_t : ::beman::execution::sender_adaptor_closure<stopped_a
 
     template <::beman::execution::sender Sndr, ::beman::execution::detail::movable_value Error>
     auto operator()(Sndr&& sndr, Error error) const {
-        return ::beman::execution::transform_sender(
-            ::beman::execution::detail::get_domain_early(sndr),
-            ::beman::execution::detail::make_sender(
-                stopped_as_error_t{}, std::move(error), ::std::forward<Sndr>(sndr)));
+        return ::beman::execution::detail::make_sender(
+            stopped_as_error_t{}, std::move(error), ::std::forward<Sndr>(sndr));
     }
 
     template <::beman::execution::detail::movable_value Error>

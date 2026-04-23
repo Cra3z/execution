@@ -97,7 +97,7 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_stop_token.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/has_as_awaitable.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/has_completions.hpp
-                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/hide_query.hpp
+    ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/hide_sched.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/immovable.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/impls_for.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/indeterminate_domain.hpp
@@ -294,7 +294,7 @@ if(BEMAN_USE_MODULES)
                     get_stop_token.cppm
                     has_as_awaitable.cppm
                     has_completions.cppm
-                    hide_query.cppm
+        hide_sched.cppm
                     immovable.cppm
                     impls_for.cppm
                     indeterminate_domain.cppm

@@ -10,7 +10,7 @@ import beman.execution.detail.try_query;
 #else
 #include <beman/execution/detail/get_domain.hpp>
 #include <beman/execution/detail/get_scheduler.hpp>
-#include <beman/execution/detail/hide_query.hpp>
+#include <beman/execution/detail/hide_sched.hpp>
 #include <beman/execution/detail/try_query.hpp>
 #endif
 
@@ -68,10 +68,10 @@ auto test_try_query() -> void {
 template <bool Value, typename Q, typename Tag, typename... Args>
 auto test_hide_query_exists(int expect, Q q, Tag&& tag, Args&&... args) -> void {
     static_assert(Value == requires {
-        test_detail::hide_query(q).query(::std::forward<Tag>(tag), ::std::forward<Args>(args)...);
+        test_detail::hide_sched(q).query(::std::forward<Tag>(tag), ::std::forward<Args>(args)...);
     });
     if constexpr (Value) {
-        ASSERT(expect == test_detail::hide_query(q).query(::std::forward<Tag>(tag), ::std::forward<Args>(args)...));
+        ASSERT(expect == test_detail::hide_sched(q).query(::std::forward<Tag>(tag), ::std::forward<Args>(args)...));
     }
 }
 

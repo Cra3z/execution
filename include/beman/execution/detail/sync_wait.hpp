@@ -115,14 +115,14 @@ struct sync_wait_t {
             typename ::beman::execution::detail::sync_wait_result_type<Sender>;
             {
                 ::beman::execution::apply_sender(
-                    ::beman::execution::detail::get_domain_early(std::forward<Sender>(sender)),
+                    ::beman::execution::default_domain{},
                     self,
                     ::std::forward<Sender>(sender))
             } -> ::std::same_as<::beman::execution::detail::sync_wait_result_type<Sender>>;
         }
     auto operator()(Sender&& sender) const {
-        auto domain{::beman::execution::detail::get_domain_early(sender)};
-        return ::beman::execution::apply_sender(domain, *this, ::std::forward<Sender>(sender));
+        // P3826R5: Use default_domain for apply_sender
+        return ::beman::execution::apply_sender(::beman::execution::default_domain{}, *this, ::std::forward<Sender>(sender));
     }
 };
 } // namespace beman::execution::detail

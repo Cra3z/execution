@@ -35,9 +35,11 @@ import beman.execution.detail.when_all;
 
 namespace beman::execution::detail {
 struct when_all_with_variant_t {
-    // template <::beman::execution::detail::sender_for<when_all_with_variant_t> Sender>
-    template <::beman::execution::sender Sender>
-    auto transform_sender(Sender&& sender, auto&&...) const noexcept {
+    // P3826R5: transform_sender now takes Tag as first param
+    template <typename Tag,
+              ::beman::execution::detail::sender_for<when_all_with_variant_t> Sender,
+              typename Env>
+    auto transform_sender(Tag, Sender&& sender, const Env&) const noexcept {
         return ::std::forward<Sender>(sender).apply([](auto&&, auto&&, auto&&... child) {
             return ::beman::execution::when_all(
                 ::beman::execution::into_variant(::beman::execution::detail::forward_like<Sender>(child))...);
@@ -46,10 +48,8 @@ struct when_all_with_variant_t {
 
     template <::beman::execution::sender... Sender>
     auto operator()(Sender&&... sender) const {
-        using domain_t =
-            typename ::std::common_type_t<decltype(::beman::execution::detail::get_domain_early(sender))...>;
-        return ::beman::execution::transform_sender(
-            domain_t{}, ::beman::execution::detail::make_sender(*this, {}, ::std::forward<Sender>(sender)...));
+        // P3826R5: No early customization
+        return ::beman::execution::detail::make_sender(*this, {}, ::std::forward<Sender>(sender)...);
     }
 };
 } // namespace beman::execution::detail

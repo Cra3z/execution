@@ -14,13 +14,11 @@ import std;
 #endif
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.connect_awaitable;
-import beman.execution.detail.get_domain_late;
 import beman.execution.detail.get_env;
 import beman.execution.detail.operation_state;
 import beman.execution.detail.transform_sender;
 #else
 #include <beman/execution/detail/connect_awaitable.hpp>
-#include <beman/execution/detail/get_domain_late.hpp>
 #include <beman/execution/detail/get_env.hpp>
 #include <beman/execution/detail/operation_state.hpp>
 #include <beman/execution/detail/transform_sender.hpp>
@@ -41,9 +39,8 @@ struct connect_t {
     static auto make_new_sender(Sender&& sender, Receiver&& receiver)
         //-dk:TODO this noexcept needs to get confirmed/fixed
         noexcept(true) -> decltype(auto) {
+        // P3826R5: transform_sender(sndr, get_env(rcvr))
         return ::beman::execution::transform_sender(
-            decltype(::beman::execution::detail::get_domain_late(::std::forward<Sender>(sender),
-                                                                 ::beman::execution::get_env(receiver))){},
             ::std::forward<Sender>(sender),
             ::beman::execution::get_env(receiver));
     }

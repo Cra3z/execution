@@ -83,17 +83,17 @@ struct on_t : ::beman::execution::sender_adaptor_closure<on_t> {
         }
     };
 
-    template <::beman::execution::detail::sender_for<on_t> OutSndr, typename Env>
-    auto transform_sender(OutSndr&& out_sndr, Env&& env) const -> decltype(auto) {
-        struct not_a_scheduler {};
-        // auto&& [_, data, child] = out_sndr;
+    // P3826R5: transform_sender now takes Tag as first param
+    template <typename Tag, ::beman::execution::detail::sender_for<on_t> OutSndr, typename Env>
+    auto transform_sender(Tag, OutSndr&& out_sndr, const Env& env) const -> decltype(auto) {
+        struct not_a_scheduler_t {};
         auto&& data  = out_sndr.template get<1>();
         auto&& child = out_sndr.template get<2>();
 
         if constexpr (::beman::execution::scheduler<decltype(data)>) {
             auto sch{::beman::execution::detail::query_with_default(
-                ::beman::execution::get_scheduler, env, not_a_scheduler{})};
-            if constexpr (::std::same_as<not_a_scheduler, decltype(sch)>) {
+                ::beman::execution::get_scheduler, env, not_a_scheduler_t{})};
+            if constexpr (::std::same_as<not_a_scheduler_t, decltype(sch)>) {
                 return env_needs_get_scheduler<Env>{};
             } else {
                 return ::beman::execution::continues_on(
@@ -107,9 +107,9 @@ struct on_t : ::beman::execution::sender_adaptor_closure<on_t> {
                 ::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>,
                 ::beman::execution::get_env(child),
                 ::beman::execution::detail::query_with_default(
-                    ::beman::execution::get_scheduler, env, not_a_scheduler{}))};
+                    ::beman::execution::get_scheduler, env, not_a_scheduler_t{}))};
 
-            if constexpr (::std::same_as<not_a_scheduler, decltype(orig_sch)>) {
+            if constexpr (::std::same_as<not_a_scheduler_t, decltype(orig_sch)>) {
                 return env_needs_get_scheduler<Env>{};
             } else {
                 return ::beman::execution::write_env(
@@ -138,23 +138,18 @@ struct on_t : ::beman::execution::sender_adaptor_closure<on_t> {
 
     template <::beman::execution::scheduler Sch, ::beman::execution::sender Sndr>
     auto operator()(Sch&& sch, Sndr&& sndr) const {
-        auto domain{::beman::execution::detail::query_with_default(
-            ::beman::execution::get_domain, sch, ::beman::execution::default_domain{})};
-        return ::beman::execution::transform_sender(
-            domain,
-            ::beman::execution::detail::make_sender(*this, ::std::forward<Sch>(sch), ::std::forward<Sndr>(sndr)));
+        // P3826R5: No early customization
+        return ::beman::execution::detail::make_sender(*this, ::std::forward<Sch>(sch), ::std::forward<Sndr>(sndr));
     }
     template <::beman::execution::scheduler                         Sch,
               ::beman::execution::sender                            Sndr,
               ::beman::execution::detail::is_sender_adaptor_closure Closure>
     auto operator()(Sndr&& sndr, Sch&& sch, Closure&& closure) const {
-        auto domain{::beman::execution::detail::get_domain_early(sndr)};
-        return ::beman::execution::transform_sender(
-            domain,
-            ::beman::execution::detail::make_sender(
-                *this,
-                ::beman::execution::detail::product_type{::std::forward<Sch>(sch), ::std::forward<Closure>(closure)},
-                ::std::forward<Sndr>(sndr)));
+        // P3826R5: No early customization
+        return ::beman::execution::detail::make_sender(
+            *this,
+            ::beman::execution::detail::product_type{::std::forward<Sch>(sch), ::std::forward<Closure>(closure)},
+            ::std::forward<Sndr>(sndr));
     }
     template <::beman::execution::scheduler Sch, ::beman::execution::detail::is_sender_adaptor_closure Closure>
     auto operator()(Sch&& sch, Closure&& closure) const {

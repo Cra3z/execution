@@ -135,16 +135,11 @@ static_assert(std::same_as<::beman::execution::inplace_stop_token,
                                ::std::declval<when_all_env<::beman::execution::env<>>>()))>);
 
 struct when_all_t {
+    // P3826R5: No early customization - just return make_sender directly
     template <::beman::execution::sender... Sender>
-        requires(0u != sizeof...(Sender)) && (... && beman::execution::detail::valid_when_all_sender<Sender>) &&
-                requires(Sender&&... s) {
-                    typename ::std::common_type_t<decltype(::beman::execution::detail::get_domain_early(s))...>;
-                }
+        requires(0u != sizeof...(Sender)) && (... && beman::execution::detail::valid_when_all_sender<Sender>)
     auto operator()(Sender&&... sender) const {
-        using common_t =
-            typename ::std::common_type_t<decltype(::beman::execution::detail::get_domain_early(sender))...>;
-        return ::beman::execution::transform_sender(
-            common_t(), ::beman::execution::detail::make_sender(*this, {}, ::std::forward<Sender>(sender)...));
+        return ::beman::execution::detail::make_sender(*this, {}, ::std::forward<Sender>(sender)...);
     }
 
   private:
@@ -186,13 +181,9 @@ struct when_all_t {
 
     struct impls_for : ::beman::execution::detail::default_impls {
         struct get_attrs_impl {
-            auto operator()(auto&&, auto&&... sender) const {
-                using common_t =
-                    typename ::std::common_type_t<decltype(::beman::execution::detail::get_domain_early(sender))...>;
-                if constexpr (::std::same_as<common_t, ::beman::execution::default_domain>)
-                    return ::beman::execution::env<>{};
-                else
-                    return ::beman::execution::detail::make_env(::beman::execution::get_domain, common_t{});
+            // P3826R5: get_attrs no longer computes domain from get_domain_early
+            auto operator()(auto&&, auto&&...) const {
+                return ::beman::execution::env<>{};
             }
         };
         static constexpr auto get_attrs{get_attrs_impl{}};

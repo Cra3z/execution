@@ -24,7 +24,6 @@ import beman.execution.detail.default_impls;
 import beman.execution.detail.dependent_sender;
 import beman.execution.detail.dependent_sender_error;
 import beman.execution.detail.env;
-import beman.execution.detail.get_domain_early;
 import beman.execution.detail.impls_for;
 import beman.execution.detail.make_sender;
 import beman.execution.detail.meta.combine;
@@ -37,7 +36,7 @@ import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.set_error;
 import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
-import beman.execution.detail.transform_sender;
+import beman.execution.detail.sender_adaptor_closure;
 #else
 #include <beman/execution/detail/call_result_t.hpp>
 #include <beman/execution/detail/completion_signatures.hpp>
@@ -47,7 +46,6 @@ import beman.execution.detail.transform_sender;
 #include <beman/execution/detail/dependent_sender.hpp>
 #include <beman/execution/detail/dependent_sender_error.hpp>
 #include <beman/execution/detail/env.hpp>
-#include <beman/execution/detail/get_domain_early.hpp>
 #include <beman/execution/detail/impls_for.hpp>
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/meta_combine.hpp>
@@ -61,7 +59,7 @@ import beman.execution.detail.transform_sender;
 #include <beman/execution/detail/set_error.hpp>
 #include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
-#include <beman/execution/detail/transform_sender.hpp>
+#include <beman/execution/detail/sender_adaptor.hpp>
 #endif
 
 // ----------------------------------------------------------------------------
@@ -117,10 +115,8 @@ struct then_t : ::beman::execution::sender_adaptor_closure<then_t<Completion>> {
     }
     template <::beman::execution::sender Sender, ::beman::execution::detail::movable_value Fun>
     auto operator()(Sender&& sender, Fun&& fun) const {
-        auto domain{::beman::execution::detail::get_domain_early(sender)};
-        return ::beman::execution::transform_sender(
-            domain,
-            ::beman::execution::detail::make_sender(*this, ::std::forward<Fun>(fun), ::std::forward<Sender>(sender)));
+        // P3826R5: No early customization - just return make_sender directly
+        return ::beman::execution::detail::make_sender(*this, ::std::forward<Fun>(fun), ::std::forward<Sender>(sender));
     }
     template <::beman::execution::sender Sender, typename Env>
         requires ::beman::execution::detail::nested_sender_has_affine_on<Sender, Env>
