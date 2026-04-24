@@ -89,8 +89,6 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_completion_signatures.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_delegation_scheduler.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_domain.hpp
-                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_domain_early.hpp
-                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_domain_late.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_env.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_forward_progress_guarantee.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_scheduler.hpp
@@ -286,8 +284,6 @@ if(BEMAN_USE_MODULES)
                     get_completion_scheduler.cppm
                     get_completion_signatures.cppm
                     get_delegation_scheduler.cppm
-                    get_domain_early.cppm
-                    get_domain_late.cppm
                     get_domain.cppm
                     get_env.cppm
                     get_forward_progress_guarantee.cppm

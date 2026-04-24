@@ -39,7 +39,6 @@ struct connect_t {
     static auto make_new_sender(Sender&& sender, Receiver&& receiver)
         //-dk:TODO this noexcept needs to get confirmed/fixed
         noexcept(true) -> decltype(auto) {
-        // P3826R5: transform_sender(sndr, get_env(rcvr))
         return ::beman::execution::transform_sender(
             ::std::forward<Sender>(sender),
             ::beman::execution::get_env(receiver));

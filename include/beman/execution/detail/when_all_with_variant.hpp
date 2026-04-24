@@ -13,7 +13,6 @@ import std;
 #endif
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.forward_like;
-import beman.execution.detail.get_domain_early;
 import beman.execution.detail.into_variant;
 import beman.execution.detail.make_sender;
 import beman.execution.detail.sender;
@@ -22,7 +21,6 @@ import beman.execution.detail.transform_sender;
 import beman.execution.detail.when_all;
 #else
 #include <beman/execution/detail/forward_like.hpp>
-#include <beman/execution/detail/get_domain_early.hpp>
 #include <beman/execution/detail/into_variant.hpp>
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/sender.hpp>

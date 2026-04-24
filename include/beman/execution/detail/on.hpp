@@ -19,7 +19,6 @@ import beman.execution.detail.forward_like;
 import beman.execution.detail.fwd_env;
 import beman.execution.detail.get_completion_scheduler;
 import beman.execution.detail.get_domain;
-import beman.execution.detail.get_domain_early;
 import beman.execution.detail.get_env;
 import beman.execution.detail.get_scheduler;
 import beman.execution.detail.join_env;
@@ -41,7 +40,6 @@ import beman.execution.detail.write_env;
 #include <beman/execution/detail/forward_like.hpp>
 #include <beman/execution/detail/fwd_env.hpp>
 #include <beman/execution/detail/get_domain.hpp>
-#include <beman/execution/detail/get_domain_early.hpp>
 #include <beman/execution/detail/join_env.hpp>
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/product_type.hpp>

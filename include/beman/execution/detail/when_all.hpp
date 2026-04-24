@@ -33,7 +33,6 @@ import beman.execution.detail.env_of_t;
 import beman.execution.detail.error_types_of_t;
 import beman.execution.detail.get_env;
 import beman.execution.detail.get_domain;
-import beman.execution.detail.get_domain_early;
 import beman.execution.detail.get_stop_token;
 import beman.execution.detail.impls_for;
 import beman.execution.detail.inplace_stop_source;
@@ -73,7 +72,6 @@ import beman.execution.detail.value_types_of_t;
 #include <beman/execution/detail/env_of_t.hpp>
 #include <beman/execution/detail/error_types_of_t.hpp>
 #include <beman/execution/detail/get_domain.hpp>
-#include <beman/execution/detail/get_domain_early.hpp>
 #include <beman/execution/detail/get_stop_token.hpp>
 #include <beman/execution/detail/impls_for.hpp>
 #include <beman/execution/detail/inplace_stop_source.hpp>
@@ -135,7 +133,6 @@ static_assert(std::same_as<::beman::execution::inplace_stop_token,
                                ::std::declval<when_all_env<::beman::execution::env<>>>()))>);
 
 struct when_all_t {
-    // P3826R5: No early customization - just return make_sender directly
     template <::beman::execution::sender... Sender>
         requires(0u != sizeof...(Sender)) && (... && beman::execution::detail::valid_when_all_sender<Sender>)
     auto operator()(Sender&&... sender) const {
@@ -181,7 +178,6 @@ struct when_all_t {
 
     struct impls_for : ::beman::execution::detail::default_impls {
         struct get_attrs_impl {
-            // P3826R5: get_attrs no longer computes domain from get_domain_early
             auto operator()(auto&&, auto&&...) const {
                 return ::beman::execution::env<>{};
             }

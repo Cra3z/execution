@@ -32,8 +32,6 @@ export import beman.execution.detail.forward_like;
 export import beman.execution.detail.fwd_env;
 export import beman.execution.detail.gather_signatures;
 export import beman.execution.detail.get_awaiter;
-export import beman.execution.detail.get_domain_early;
-export import beman.execution.detail.get_domain_late;
 export import beman.execution.detail.has_as_awaitable;
 export import beman.execution.detail.has_completions;
 export import beman.execution.detail.immovable;
