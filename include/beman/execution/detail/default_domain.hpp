@@ -52,8 +52,7 @@ struct default_domain {
             tag.apply_sender(::std::forward<Sender>(sender), ::std::forward<Args>(args)...);
         }
     static constexpr auto apply_sender(Tag tag, Sender&& sender, Args&&... args) noexcept(
-        noexcept(tag.apply_sender(::std::forward<Sender>(sender), ::std::forward<Args>(args)...)))
-        -> decltype(auto) {
+        noexcept(tag.apply_sender(::std::forward<Sender>(sender), ::std::forward<Args>(args)...))) -> decltype(auto) {
         return tag.apply_sender(::std::forward<Sender>(sender), ::std::forward<Args>(args)...);
     }
 };

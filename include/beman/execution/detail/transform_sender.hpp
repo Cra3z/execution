@@ -15,20 +15,14 @@ import std;
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.completion_domain;
 import beman.execution.detail.default_domain;
-import beman.execution.detail.env_of_t;
-import beman.execution.detail.get_completion_domain;
 import beman.execution.detail.get_domain;
-import beman.execution.detail.get_env;
 import beman.execution.detail.sender;
 import beman.execution.detail.set_value;
 import beman.execution.detail.start;
 #else
 #include <beman/execution/detail/completion_domain.hpp>
 #include <beman/execution/detail/default_domain.hpp>
-#include <beman/execution/detail/env_of_t.hpp>
-#include <beman/execution/detail/get_completion_domain.hpp>
 #include <beman/execution/detail/get_domain.hpp>
-#include <beman/execution/detail/get_env.hpp>
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/start.hpp>
@@ -53,7 +47,8 @@ struct transform_sndr_recurse {
 
     template <typename Sndr, typename Env>
     auto operator()(Sndr&& sndr, const Env& env) -> decltype(auto) {
-        auto&& new_sndr = ::beman::execution::detail::transformed_sndr(Domain(), ::std::forward<Sndr>(sndr), env);
+        decltype(auto) new_sndr =
+            ::beman::execution::detail::transformed_sndr(Domain(), Tag(), ::std::forward<Sndr>(sndr), env);
         if constexpr (::std::same_as<::std::decay_t<Sndr>, ::std::decay_t<decltype(new_sndr)>>) {
             return std::forward<decltype(new_sndr)>(new_sndr);
         } else {

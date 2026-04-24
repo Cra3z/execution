@@ -15,12 +15,14 @@ import std;
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.default_domain;
 import beman.execution.detail.forwarding_query;
+import beman.execution.detail.get_completion_domain;
 import beman.execution.detail.get_scheduler;
 import beman.execution.detail.hide_sched;
 import beman.execution.detail.set_value;
 #else
 #include <beman/execution/detail/default_domain.hpp>
 #include <beman/execution/detail/forwarding_query.hpp>
+#include <beman/execution/detail/get_completion_domain.hpp>
 #include <beman/execution/detail/get_scheduler.hpp>
 #include <beman/execution/detail/hide_sched.hpp>
 #include <beman/execution/detail/set_value.hpp>

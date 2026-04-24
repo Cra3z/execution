@@ -30,7 +30,7 @@ struct get_scheduler_t : ::beman::execution::forwarding_query_t {
         requires requires(const get_scheduler_t& self, Env&& env) { ::std::as_const(env).query(self); }
     auto operator()(Env&& env) const noexcept {
         return ::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>(
-            ::std::as_const(env).query(get_scheduler_t{}), ::beman::execution::detail::hide_sched(env));
+            ::std::as_const(env).query(*this), ::beman::execution::detail::hide_sched(env));
     }
 };
 

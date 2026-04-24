@@ -6,10 +6,12 @@
 
 #include <beman/execution/detail/common.hpp>
 #ifdef BEMAN_HAS_MODULES
+import beman.execution.detail.get_completion_domain;
 import beman.execution.detail.get_completion_scheduler;
 import beman.execution.detail.get_domain;
 import beman.execution.detail.get_scheduler;
 #else
+#include <beman/execution/detail/get_completion_domain.hpp>
 #include <beman/execution/detail/get_completion_scheduler.hpp>
 #include <beman/execution/detail/get_domain.hpp>
 #include <beman/execution/detail/get_scheduler.hpp>
@@ -19,10 +21,6 @@ import beman.execution.detail.get_scheduler;
 
 namespace beman::execution::detail {
 
-// inline-attrs<Tag> per P3826R5
-// For a subexpression env:
-//   inline-attrs<Tag>{}.query(get_completion_scheduler<Tag>, env) = get_scheduler(env)
-//   inline-attrs<Tag>{}.query(get_completion_domain<Tag>, env) = get_domain(env)
 template <typename Tag>
 struct inline_attrs {
     template <typename Env>
@@ -33,8 +31,7 @@ struct inline_attrs {
 
     template <typename Env>
         requires requires(const Env& env) { ::beman::execution::get_domain(env); }
-    constexpr auto query(const auto& /*get_completion_domain_tag*/, const Env& env) const noexcept
-        -> decltype(::beman::execution::get_domain(env)) {
+    constexpr auto query(const ::beman::execution::get_completion_domain_t<Tag>&, const Env& env) const noexcept {
         return ::beman::execution::get_domain(env);
     }
 };

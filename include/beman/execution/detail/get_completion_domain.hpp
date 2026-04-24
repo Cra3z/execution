@@ -35,6 +35,8 @@ import beman.execution.detail.try_query;
 // ----------------------------------------------------------------------------
 
 namespace beman::execution::detail {
+struct no_completion_domain {};
+
 template <typename T = void>
     requires ::std::same_as<T, void> || ::beman::execution::detail::completion_tag<T>
 struct get_completion_domain_t : ::beman::execution::forwarding_query_t {
@@ -47,8 +49,8 @@ struct get_completion_domain_t : ::beman::execution::forwarding_query_t {
             return ::beman::execution::detail::try_query(
                 ::std::forward<Q>(q), get_completion_domain_t<T>{}, ::std::forward<E>(e)...);
         } else if constexpr (::std::same_as<T, void>) {
-            return get_completion_domain_t<::beman::execution::set_value_t>()(::std::forward<Q>(q),
-                                                                              ::std::forward<E>(e)...);
+            return get_completion_domain_t<::beman::execution::set_value_t>::impl(::std::forward<Q>(q),
+                                                                                  ::std::forward<E>(e)...);
         } else if constexpr (requires {
                                  ::beman::execution::detail::try_query(
                                      ::beman::execution::get_completion_scheduler<T>(q, e...),
@@ -63,15 +65,17 @@ struct get_completion_domain_t : ::beman::execution::forwarding_query_t {
         } else if constexpr (::beman::execution::scheduler<Q> && 0u != sizeof...(E)) {
             return ::beman::execution::default_domain{};
         } else {
-            static_assert(::std::same_as<T, int>,
-                          "get_completion_domain requires the environment to be queryable for get_completion_domain "
-                          "or get_completion_scheduler");
+            return ::beman::execution::detail::no_completion_domain{};
         }
     };
 
+    template <typename Q, typename... E>
+    using domain_of = decltype((impl)(::std::declval<Q>(), ::std::declval<E>()...));
+
     template <::beman::execution::detail::queryable Q, typename... E>
+        requires(!::std::same_as<domain_of<Q, E...>, ::beman::execution::detail::no_completion_domain>)
     auto operator()(Q&&, E&&...) const noexcept {
-        using domain = decltype((impl)(::std::declval<Q>(), ::std::declval<E>()...));
+        using domain = domain_of<Q, E...>;
         static_assert(noexcept(domain{}), "the domain's default constructor has to be noexcept");
         return domain{};
     }

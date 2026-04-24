@@ -35,7 +35,6 @@ namespace beman::execution {
 struct inline_scheduler {
     using scheduler_concept = ::beman::execution::scheduler_t;
 
-    // P3826R5: Use inline_attrs<set_value_t> for sender env
     using env = ::beman::execution::detail::inline_attrs<::beman::execution::set_value_t>;
 
     template <::beman::execution::receiver Rcvr>

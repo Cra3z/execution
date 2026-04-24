@@ -18,12 +18,11 @@ import beman.execution.detail.apply_sender;
 import beman.execution.detail.as_except_ptr;
 import beman.execution.detail.connect;
 import beman.execution.detail.decayed_tuple;
+import beman.execution.detail.default_domain;
 import beman.execution.detail.get_delegation_scheduler;
-import beman.execution.detail.get_domain_early;
 import beman.execution.detail.get_scheduler;
 import beman.execution.detail.receiver;
 import beman.execution.detail.run_loop;
-import beman.execution.detail.sender_in;
 import beman.execution.detail.sender_in;
 import beman.execution.detail.start;
 import beman.execution.detail.value_types_of_t;
@@ -32,12 +31,11 @@ import beman.execution.detail.value_types_of_t;
 #include <beman/execution/detail/as_except_ptr.hpp>
 #include <beman/execution/detail/connect.hpp>
 #include <beman/execution/detail/decayed_tuple.hpp>
+#include <beman/execution/detail/default_domain.hpp>
 #include <beman/execution/detail/get_delegation_scheduler.hpp>
-#include <beman/execution/detail/get_domain_early.hpp>
 #include <beman/execution/detail/get_scheduler.hpp>
 #include <beman/execution/detail/receiver.hpp>
 #include <beman/execution/detail/run_loop.hpp>
-#include <beman/execution/detail/sender_in.hpp>
 #include <beman/execution/detail/sender_in.hpp>
 #include <beman/execution/detail/start.hpp>
 #include <beman/execution/detail/value_types_of_t.hpp>

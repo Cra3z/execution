@@ -13,9 +13,11 @@ import std;
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.default_domain;
 import beman.execution.detail.get_completion_domain;
+import beman.execution.detail.get_env;
 #else
 #include <beman/execution/detail/default_domain.hpp>
 #include <beman/execution/detail/get_completion_domain.hpp>
+#include <beman/execution/detail/get_env.hpp>
 #endif
 
 // ----------------------------------------------------------------------------

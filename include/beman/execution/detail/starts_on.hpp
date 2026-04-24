@@ -12,11 +12,13 @@ import std;
 #include <utility>
 #endif
 #ifdef BEMAN_HAS_MODULES
+import beman.execution.detail.continues_on;
 import beman.execution.detail.default_domain;
 import beman.execution.detail.forward_like;
 import beman.execution.detail.fwd_env;
 import beman.execution.detail.get_domain;
 import beman.execution.detail.join_env;
+import beman.execution.detail.just;
 import beman.execution.detail.let;
 import beman.execution.detail.make_sender;
 import beman.execution.detail.query_with_default;
@@ -27,6 +29,7 @@ import beman.execution.detail.sender;
 import beman.execution.detail.sender_for;
 import beman.execution.detail.transform_sender;
 #else
+#include <beman/execution/detail/continues_on.hpp>
 #include <beman/execution/detail/default_domain.hpp>
 #include <beman/execution/detail/forward_like.hpp>
 #include <beman/execution/detail/fwd_env.hpp>
@@ -48,7 +51,6 @@ import beman.execution.detail.transform_sender;
 
 namespace beman::execution::detail {
 struct starts_on_t {
-    // P3826R5: transform_sender now takes Tag as first param
     template <typename Tag,
               ::beman::execution::detail::sender_for<::beman::execution::detail::starts_on_t> Sender,
               typename Env>
@@ -61,7 +63,6 @@ struct starts_on_t {
                 ::std::is_nothrow_constructible_v<::std::decay_t<Sender>>) { return ::std::move(new_sender); });
     }
 
-    // P3826R5: No early customization - just return make_sender directly
     template <::beman::execution::scheduler Scheduler, ::beman::execution::sender Sender>
     auto operator()(Scheduler&& scheduler, Sender&& sender) const {
         return ::beman::execution::detail::make_sender(

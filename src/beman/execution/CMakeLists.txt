@@ -97,12 +97,13 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/get_stop_token.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/has_as_awaitable.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/has_completions.hpp
-    ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/hide_sched.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/hide_sched.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/immovable.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/impls_for.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/indeterminate_domain.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/indices_for.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/indirect_meta_apply.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/inline_attrs.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/inline_scheduler.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/inplace_stop_source.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/into_variant.hpp
@@ -294,12 +295,13 @@ if(BEMAN_USE_MODULES)
                     get_stop_token.cppm
                     has_as_awaitable.cppm
                     has_completions.cppm
-        hide_sched.cppm
+                    hide_sched.cppm
                     immovable.cppm
                     impls_for.cppm
                     indeterminate_domain.cppm
                     indices_for.cppm
                     indirect_meta_apply.cppm
+                    inline_attrs.cppm
                     inline_scheduler.cppm
                     inplace_stop_source.cppm
                     into_variant.cppm
