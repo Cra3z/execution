@@ -33,7 +33,6 @@ import beman.execution.detail.sender_for;
 import beman.execution.detail.set_value;
 import beman.execution.detail.starts_on;
 import beman.execution.detail.transform_sender;
-import beman.execution.detail.write_env;
 #else
 #include <beman/execution/detail/continues_on.hpp>
 #include <beman/execution/detail/default_domain.hpp>
@@ -51,27 +50,12 @@ import beman.execution.detail.write_env;
 #include <beman/execution/detail/sender_for.hpp>
 #include <beman/execution/detail/starts_on.hpp>
 #include <beman/execution/detail/transform_sender.hpp>
-#include <beman/execution/detail/write_env.hpp>
 #endif
 
 // ----------------------------------------------------------------------------
 
 namespace beman::execution::detail {
 struct on_t : ::beman::execution::sender_adaptor_closure<on_t> {
-    template <::beman::execution::detail::sender_for<on_t> OutSndr, typename Env>
-    auto transform_env(OutSndr&& out_sndr, Env&& env) const -> decltype(auto) {
-        auto&& data{out_sndr.template get<1>()};
-
-        if constexpr (::beman::execution::scheduler<decltype(data)>)
-            return ::beman::execution::detail::join_env(
-                ::beman::execution::detail::sched_env(::beman::execution::detail::forward_like<OutSndr>(data)
-
-                                                          ),
-                ::beman::execution::detail::fwd_env(::std::forward<Env>(env)));
-        else
-            return std::forward<Env>(env);
-    }
-
     template <typename>
     struct env_needs_get_scheduler {
         using sender_concept = ::beman::execution::sender_t;
@@ -81,9 +65,9 @@ struct on_t : ::beman::execution::sender_adaptor_closure<on_t> {
         }
     };
 
-    // P3826R5: transform_sender now takes Tag as first param
-    template <typename Tag, ::beman::execution::detail::sender_for<on_t> OutSndr, typename Env>
-    auto transform_sender(Tag, OutSndr&& out_sndr, const Env& env) const -> decltype(auto) {
+    template <::beman::execution::detail::sender_for<on_t> OutSndr, typename Env>
+    auto transform_sender(::beman::execution::set_value_t, OutSndr&& out_sndr, const Env& env) const
+        -> decltype(auto) {
         struct not_a_scheduler_t {};
         auto&& data  = out_sndr.template get<1>();
         auto&& child = out_sndr.template get<2>();
@@ -101,23 +85,19 @@ struct on_t : ::beman::execution::sender_adaptor_closure<on_t> {
             }
         } else {
             auto& [sch, closure] = data;
-            auto orig_sch{::beman::execution::detail::query_with_default(
+            auto orig_sch{::beman::execution::detail::call_with_default(
                 ::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>,
+                not_a_scheduler_t{},
                 ::beman::execution::get_env(child),
-                ::beman::execution::detail::query_with_default(
-                    ::beman::execution::get_scheduler, env, not_a_scheduler_t{}))};
+                env)};
 
             if constexpr (::std::same_as<not_a_scheduler_t, decltype(orig_sch)>) {
                 return env_needs_get_scheduler<Env>{};
             } else {
-                return ::beman::execution::write_env(
-                    ::beman::execution::continues_on(
-                        ::beman::execution::detail::forward_like<OutSndr>(closure)(::beman::execution::continues_on(
-                            ::beman::execution::write_env(::beman::execution::detail::forward_like<OutSndr>(child),
-                                                          ::beman::execution::detail::sched_env(orig_sch)),
-                            sch)),
-                        orig_sch),
-                    ::beman::execution::detail::sched_env(env));
+                return ::beman::execution::continues_on(
+                    ::beman::execution::detail::forward_like<OutSndr>(closure)(::beman::execution::continues_on(
+                        ::beman::execution::detail::forward_like<OutSndr>(child), sch)),
+                    orig_sch);
             }
         }
     }
@@ -136,14 +116,12 @@ struct on_t : ::beman::execution::sender_adaptor_closure<on_t> {
 
     template <::beman::execution::scheduler Sch, ::beman::execution::sender Sndr>
     auto operator()(Sch&& sch, Sndr&& sndr) const {
-        // P3826R5: No early customization
         return ::beman::execution::detail::make_sender(*this, ::std::forward<Sch>(sch), ::std::forward<Sndr>(sndr));
     }
     template <::beman::execution::scheduler                         Sch,
               ::beman::execution::sender                            Sndr,
               ::beman::execution::detail::is_sender_adaptor_closure Closure>
     auto operator()(Sndr&& sndr, Sch&& sch, Closure&& closure) const {
-        // P3826R5: No early customization
         return ::beman::execution::detail::make_sender(
             *this,
             ::beman::execution::detail::product_type{::std::forward<Sch>(sch), ::std::forward<Closure>(closure)},

@@ -23,10 +23,12 @@ import beman.execution.detail.get_env;
 // ----------------------------------------------------------------------------
 
 namespace beman::execution::detail {
-template <typename Sndr, typename Env>
+template <typename Tag = void, typename Sndr, typename Env>
 constexpr auto completion_domain(const Sndr& sndr, const Env& env) noexcept {
-    if constexpr (requires { ::beman::execution::get_completion_domain<>(::beman::execution::get_env(sndr), env); }) {
-        return ::beman::execution::get_completion_domain<>(::beman::execution::get_env(sndr), env);
+    if constexpr (requires {
+                      ::beman::execution::get_completion_domain<Tag>(::beman::execution::get_env(sndr), env);
+                  }) {
+        return ::beman::execution::get_completion_domain<Tag>(::beman::execution::get_env(sndr), env);
     } else {
         return ::beman::execution::default_domain();
     }

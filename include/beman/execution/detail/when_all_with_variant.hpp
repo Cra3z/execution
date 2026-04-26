@@ -17,7 +17,7 @@ import beman.execution.detail.into_variant;
 import beman.execution.detail.make_sender;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_for;
-import beman.execution.detail.transform_sender;
+import beman.execution.detail.set_value;
 import beman.execution.detail.when_all;
 #else
 #include <beman/execution/detail/forward_like.hpp>
@@ -25,7 +25,7 @@ import beman.execution.detail.when_all;
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_for.hpp>
-#include <beman/execution/detail/transform_sender.hpp>
+#include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/when_all.hpp>
 #endif
 
@@ -33,11 +33,8 @@ import beman.execution.detail.when_all;
 
 namespace beman::execution::detail {
 struct when_all_with_variant_t {
-    // P3826R5: transform_sender now takes Tag as first param
-    template <typename Tag,
-              ::beman::execution::detail::sender_for<when_all_with_variant_t> Sender,
-              typename Env>
-    auto transform_sender(Tag, Sender&& sender, const Env&) const noexcept {
+    template <::beman::execution::detail::sender_for<when_all_with_variant_t> Sender, typename Env>
+    auto transform_sender(::beman::execution::set_value_t, Sender&& sender, const Env&) const noexcept {
         return ::std::forward<Sender>(sender).apply([](auto&&, auto&&, auto&&... child) {
             return ::beman::execution::when_all(
                 ::beman::execution::into_variant(::beman::execution::detail::forward_like<Sender>(child))...);
@@ -46,7 +43,6 @@ struct when_all_with_variant_t {
 
     template <::beman::execution::sender... Sender>
     auto operator()(Sender&&... sender) const {
-        // P3826R5: No early customization
         return ::beman::execution::detail::make_sender(*this, {}, ::std::forward<Sender>(sender)...);
     }
 };

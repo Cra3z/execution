@@ -39,7 +39,6 @@ import beman.execution.detail.meta.to;
 import beman.execution.detail.meta.transform;
 import beman.execution.detail.meta.unique;
 import beman.execution.detail.receiver;
-import beman.execution.detail.sched_attrs;
 import beman.execution.detail.schedule;
 import beman.execution.detail.schedule_from;
 import beman.execution.detail.schedule_result_t;
@@ -70,7 +69,6 @@ import beman.execution.detail.start;
 #include <beman/execution/detail/meta_to.hpp>
 #include <beman/execution/detail/meta_transform.hpp>
 #include <beman/execution/detail/meta_unique.hpp>
-#include <beman/execution/detail/sched_attrs.hpp>
 #include <beman/execution/detail/schedule.hpp>
 #include <beman/execution/detail/schedule_from.hpp>
 #include <beman/execution/detail/schedule_result_t.hpp>
@@ -90,16 +88,12 @@ import beman.execution.detail.start;
 
 namespace beman::execution::detail {
 
-// P3826R5: continues_on schedules work dependent on the completion of a sender
-// onto a scheduler's associated execution resource.
-// continues_on(sndr, sch) = make_sender(continues_on, sch, schedule_from(sndr))
 struct continues_on_t {
     template <::beman::execution::scheduler Scheduler>
     auto operator()(Scheduler&& scheduler) const {
         return ::beman::execution::detail::make_sender_adaptor(*this, ::std::forward<Scheduler>(scheduler));
     }
 
-    // P3826R5: continues_on(sndr, sch) = make_sender(continues_on, sch, schedule_from(sndr))
     template <::beman::execution::sender Sender, ::beman::execution::scheduler Scheduler>
     auto operator()(Sender&& sender, Scheduler&& scheduler) const {
         return ::beman::execution::detail::make_sender(
@@ -119,9 +113,9 @@ struct continues_on_t {
         template <typename... E>
         using as_set_error = ::beman::execution::completion_signatures<::beman::execution::set_error_t(E)...>;
         using type         = ::beman::execution::detail::meta::combine<
-            decltype(::beman::execution::get_completion_signatures<Sender, Env>()),
-            ::beman::execution::error_types_of_t<scheduler_sender, Env, as_set_error>,
-            ::beman::execution::completion_signatures<::beman::execution::set_error_t(::std::exception_ptr)>>;
+                    decltype(::beman::execution::get_completion_signatures<Sender, Env>()),
+                    ::beman::execution::error_types_of_t<scheduler_sender, Env, as_set_error>,
+                    ::beman::execution::completion_signatures<::beman::execution::set_error_t(::std::exception_ptr)>>;
     };
 
   public:
@@ -130,7 +124,6 @@ struct continues_on_t {
         return typename get_signatures<::std::remove_cvref_t<Sender>, Env...>::type{};
     }
 
-    // P3826R5: impls_for<continues_on_t> has the scheduling machinery
     struct impls_for : ::beman::execution::detail::default_impls {
         template <typename State>
         struct upstream_receiver {
@@ -160,9 +153,7 @@ struct continues_on_t {
                 ::beman::execution::set_error(std::move(state->receiver), std::forward<Error>(err));
             }
 
-            auto set_stopped() && noexcept -> void {
-                ::beman::execution::set_stopped(std::move(state->receiver));
-            }
+            auto set_stopped() && noexcept -> void { ::beman::execution::set_stopped(std::move(state->receiver)); }
 
             auto get_env() const noexcept -> decltype(auto) {
                 return ::beman::execution::detail::fwd_env(::beman::execution::get_env(state->receiver));
@@ -183,22 +174,13 @@ struct continues_on_t {
             operation_t op_state;
 
             static constexpr bool nothrow() {
-                return noexcept(::beman::execution::connect(
-                    ::beman::execution::schedule(::std::declval<Scheduler>()), receiver_t{nullptr}));
+                return noexcept(::beman::execution::connect(::beman::execution::schedule(::std::declval<Scheduler>()),
+                                                            receiver_t{nullptr}));
             }
             explicit state_type(Scheduler& sch, Receiver& rcvr) noexcept(nothrow())
                 : state_base<Receiver, Variant>{rcvr},
                   op_state(::beman::execution::connect(::beman::execution::schedule(sch), receiver_t{this})) {}
         };
-
-        struct get_attrs_impl {
-            auto operator()(const auto& data, const auto& child) const noexcept -> decltype(auto) {
-                return ::beman::execution::detail::join_env(
-                    ::beman::execution::detail::sched_attrs(data),
-                    ::beman::execution::detail::fwd_env(::beman::execution::get_env(child)));
-            }
-        };
-        static constexpr auto get_attrs{get_attrs_impl{}};
 
         struct get_state_impl {
             template <typename Sender, typename Receiver>
@@ -208,20 +190,19 @@ struct continues_on_t {
                 auto sch{sender.template get<1>()};
 
                 using sched_t   = ::std::remove_cvref_t<decltype(sch)>;
-                using variant_t = ::beman::execution::detail::meta::unique<
-                    ::beman::execution::detail::meta::prepend<
-                        ::std::monostate,
-                        ::beman::execution::detail::meta::transform<
-                            ::beman::execution::detail::as_tuple_t,
-                            ::beman::execution::detail::meta::to<
-                                ::std::variant,
-                                ::beman::execution::detail::meta::combine<
-                                    ::beman::execution::completion_signatures_of_t<
-                                        ::beman::execution::detail::child_type<Sender>,
-                                        ::beman::execution::env_of_t<Receiver>>,
-                                    ::beman::execution::completion_signatures<
-                                        ::beman::execution::set_error_t(::std::exception_ptr),
-                                        ::beman::execution::set_stopped_t()>>>>>>;
+                using variant_t = ::beman::execution::detail::meta::unique<::beman::execution::detail::meta::prepend<
+                    ::std::monostate,
+                    ::beman::execution::detail::meta::transform<
+                        ::beman::execution::detail::as_tuple_t,
+                        ::beman::execution::detail::meta::to<
+                            ::std::variant,
+                            ::beman::execution::detail::meta::combine<
+                                ::beman::execution::completion_signatures_of_t<
+                                    ::beman::execution::detail::child_type<Sender>,
+                                    ::beman::execution::env_of_t<Receiver>>,
+                                ::beman::execution::completion_signatures<::beman::execution::set_error_t(
+                                                                              ::std::exception_ptr),
+                                                                          ::beman::execution::set_stopped_t()>>>>>>;
 
                 return state_type<Receiver, sched_t, variant_t>(sch, receiver);
             };

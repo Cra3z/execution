@@ -131,7 +131,7 @@ struct affine_on_t : ::beman::execution::sender_adaptor_closure<affine_on_t> {
             { ::beman::execution::get_scheduler(env) } -> ::beman::execution::scheduler;
             { ::beman::execution::schedule(::beman::execution::get_scheduler(env)) } -> ::beman::execution::sender;
         }
-    static auto transform_sender(Sender&& sender, const Env& ev) {
+    static auto transform_sender(::beman::execution::set_value_t, Sender&& sender, const Env& ev) {
         static_assert(requires {
             {
                 ::beman::execution::get_completion_signatures<decltype(::beman::execution::unstoppable(

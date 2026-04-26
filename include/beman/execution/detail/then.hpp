@@ -115,7 +115,6 @@ struct then_t : ::beman::execution::sender_adaptor_closure<then_t<Completion>> {
     }
     template <::beman::execution::sender Sender, ::beman::execution::detail::movable_value Fun>
     auto operator()(Sender&& sender, Fun&& fun) const {
-        // P3826R5: No early customization - just return make_sender directly
         return ::beman::execution::detail::make_sender(*this, ::std::forward<Fun>(fun), ::std::forward<Sender>(sender));
     }
     template <::beman::execution::sender Sender, typename Env>

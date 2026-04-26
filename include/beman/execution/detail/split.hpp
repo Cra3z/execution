@@ -364,8 +364,8 @@ struct shared_wrapper {
 };
 
 struct split_t {
-    template <class Sndr>
-    auto transform_sender(Sndr&& sndr) const {
+    template <class Sndr, typename... Env>
+    auto transform_sender(::beman::execution::set_value_t, Sndr&& sndr, const Env&...) const {
         auto&& child       = ::std::forward<Sndr>(sndr).template get<2>();
         using child_type   = decltype(child);
         using shared_state = ::beman::execution::detail::impls_for<split_impl_t>::shared_state<child_type>;

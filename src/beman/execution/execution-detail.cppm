@@ -60,7 +60,6 @@ export import beman.execution.detail.operation_state_task;
 export import beman.execution.detail.product_type;
 export import beman.execution.detail.query_with_default;
 export import beman.execution.detail.queryable;
-export import beman.execution.detail.sched_attrs;
 export import beman.execution.detail.sched_env;
 export import beman.execution.detail.sender;
 export import beman.execution.detail.sender_adaptor_closure;
