@@ -36,10 +36,13 @@ struct get_completion_scheduler_t;
 
 template <typename Tag, typename Q, typename... E>
 concept has_completion_scheduler = requires {
-    ::beman::execution::detail::recurse_query(
-        ::std::declval<const Q&>().query(::std::declval<::beman::execution::detail::get_completion_scheduler_t<Tag>>(),
-                                         ::std::declval<const E&>()...),
-        ::std::declval<const E&>()...);
+    {
+        ::beman::execution::detail::recurse_query(
+            ::std::declval<const Q&>().query(
+                ::std::declval<::beman::execution::detail::get_completion_scheduler_t<Tag>>(),
+                ::std::declval<const E&>()...),
+            ::std::declval<const E&>()...)
+    } -> ::beman::execution::scheduler;
 } || (::beman::execution::scheduler<Q> && sizeof...(E) > 0);
 
 template <::beman::execution::detail::completion_tag Tag>

@@ -17,6 +17,7 @@ import std;
 import beman.execution.detail.basic_sender;
 import beman.execution.detail.completion_signatures;
 import beman.execution.detail.completion_signatures_of_t;
+import beman.execution.detail.continues_on;
 import beman.execution.detail.env;
 import beman.execution.detail.forward_like;
 import beman.execution.detail.fwd_env;
@@ -41,6 +42,7 @@ import beman.execution.detail.unstoppable;
 import beman.execution.detail.write_env;
 #else
 #include <beman/execution/detail/completion_signatures_of_t.hpp>
+#include <beman/execution/detail/continues_on.hpp>
 #include <beman/execution/detail/env.hpp>
 #include <beman/execution/detail/forward_like.hpp>
 #include <beman/execution/detail/fwd_env.hpp>
@@ -49,7 +51,6 @@ import beman.execution.detail.write_env;
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/never_stop_token.hpp>
 #include <beman/execution/detail/prop.hpp>
-#include <beman/execution/detail/schedule_from.hpp>
 #include <beman/execution/detail/scheduler.hpp>
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor_closure.hpp>
@@ -153,9 +154,9 @@ struct affine_on_t : ::beman::execution::sender_adaptor_closure<affine_on_t> {
             return ::beman::execution::detail::store_receiver(
                 ::beman::execution::detail::forward_like<Sender>(child),
                 []<typename Child>(Child&& child, const auto& ev) {
-                    return ::beman::execution::unstoppable(::beman::execution::schedule_from(
-                        ::beman::execution::get_scheduler(ev),
-                        ::beman::execution::write_env(::std::forward<Child>(child), ev)));
+                    return ::beman::execution::unstoppable(::beman::execution::continues_on(
+                        ::beman::execution::write_env(::std::forward<Child>(child), ev),
+                        ::beman::execution::get_scheduler(ev)));
                 });
         }
     }
