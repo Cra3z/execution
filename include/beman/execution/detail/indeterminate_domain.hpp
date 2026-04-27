@@ -38,7 +38,7 @@ struct indeterminate_domain {
     static constexpr auto transform_sender(Tag tag, Sndr&& sndr, const Env& env) noexcept(
         noexcept(::beman::execution::default_domain{}.transform_sender(tag, ::std::forward<Sndr>(sndr), env)))
         -> decltype(auto) {
-        constexpr auto make_new_sender = [&]() -> decltype(auto) {
+        auto make_new_sender = [&]() -> decltype(auto) {
             return ::beman::execution::default_domain{}.transform_sender(tag, ::std::forward<Sndr>(sndr), env);
         };
         (..., verify_mandates_<::std::decay_t<decltype(make_new_sender())>, Domains, Tag, Sndr, Env>());

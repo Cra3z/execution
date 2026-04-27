@@ -5,7 +5,7 @@
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.get_domain;
 import beman.execution.detail.get_scheduler;
-import beman.execution.detail.hide_query;
+import beman.execution.detail.hide_sched;
 import beman.execution.detail.try_query;
 #else
 #include <beman/execution/detail/get_domain.hpp>

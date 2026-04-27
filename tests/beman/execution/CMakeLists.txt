@@ -27,6 +27,7 @@ list(
     exec-get-delegation-scheduler.test
     exec-get-domain.test
     exec-get-env.test
+    exec-inline-scheduler.test
     exec-get-scheduler.test
     exec-get-stop-token.test
     exec-into-variant.test
@@ -43,7 +44,6 @@ list(
     exec-run-loop-general.test
     exec-run-loop-types.test
     exec-sched.test
-    exec-schedule-from.test
     exec-schedule.test
     exec-scope-concepts.test
     exec-scope-counting.test

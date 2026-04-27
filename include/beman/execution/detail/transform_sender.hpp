@@ -54,10 +54,12 @@ struct transform_sndr_recurse {
         } else {
             if constexpr (::std::same_as<Tag, ::beman::execution::start_t>) {
                 auto new_dom = ::beman::execution::get_domain(env);
-                return transform_sndr_recurse{new_dom, Tag()}(::std::forward<decltype(new_sndr)>(new_sndr), env);
+                return ::beman::execution::detail::transform_sndr_recurse{new_dom, Tag()}(
+                    ::std::forward<decltype(new_sndr)>(new_sndr), env);
             } else {
                 auto new_dom = ::beman::execution::detail::compl_domain(new_sndr, env);
-                return transform_sndr_recurse{new_dom, Tag()}(::std::forward<decltype(new_sndr)>(new_sndr), env);
+                return ::beman::execution::detail::transform_sndr_recurse{new_dom, Tag()}(
+                    ::std::forward<decltype(new_sndr)>(new_sndr), env);
             }
         }
     }

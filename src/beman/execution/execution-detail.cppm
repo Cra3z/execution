@@ -14,7 +14,7 @@ export import beman.execution.detail.basic_state;
 export import beman.execution.detail.call_result_t;
 export import beman.execution.detail.callable;
 export import beman.execution.detail.child_type;
-export import beman.execution.detail.completion_domain;
+export import beman.execution.detail.compl_domain;
 export import beman.execution.detail.completion_signature;
 export import beman.execution.detail.completion_signatures_for;
 export import beman.execution.detail.completion_tag;
