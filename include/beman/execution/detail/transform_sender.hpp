@@ -13,14 +13,14 @@ import std;
 #include <utility>
 #endif
 #ifdef BEMAN_HAS_MODULES
-import beman.execution.detail.completion_domain;
+import beman.execution.detail.compl_domain;
 import beman.execution.detail.default_domain;
 import beman.execution.detail.get_domain;
 import beman.execution.detail.sender;
 import beman.execution.detail.set_value;
 import beman.execution.detail.start;
 #else
-#include <beman/execution/detail/completion_domain.hpp>
+#include <beman/execution/detail/compl_domain.hpp>
 #include <beman/execution/detail/default_domain.hpp>
 #include <beman/execution/detail/get_domain.hpp>
 #include <beman/execution/detail/sender.hpp>
@@ -56,7 +56,7 @@ struct transform_sndr_recurse {
                 auto new_dom = ::beman::execution::get_domain(env);
                 return transform_sndr_recurse{new_dom, Tag()}(::std::forward<decltype(new_sndr)>(new_sndr), env);
             } else {
-                auto new_dom = ::beman::execution::detail::completion_domain(new_sndr, env);
+                auto new_dom = ::beman::execution::detail::compl_domain(new_sndr, env);
                 return transform_sndr_recurse{new_dom, Tag()}(::std::forward<decltype(new_sndr)>(new_sndr), env);
             }
         }
@@ -68,7 +68,7 @@ namespace beman::execution {
 template <::beman::execution::sender Sndr, typename Env>
 auto transform_sender(Sndr&& sndr, const Env& env) -> ::beman::execution::sender decltype(auto) {
     auto starting_domain   = ::beman::execution::get_domain(env);
-    auto completion_domain = ::beman::execution::detail::completion_domain(sndr, env);
+    auto completion_domain = ::beman::execution::detail::compl_domain(sndr, env);
     auto starting_transform =
         ::beman::execution::detail::transform_sndr_recurse(starting_domain, ::beman::execution::start);
     auto complete_transform =

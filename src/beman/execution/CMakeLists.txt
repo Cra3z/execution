@@ -46,7 +46,7 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/child_type.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/class_type.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/common.hpp
-                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_domain.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/compl_domain.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_signature.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_signatures.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_signatures_for.hpp
@@ -240,7 +240,7 @@ if(BEMAN_USE_MODULES)
                     check_type_alias_exist.cppm
                     child_type.cppm
                     class_type.cppm
-                    completion_domain.cppm
+                    compl_domain.cppm
                     completion_signature.cppm
                     completion_signatures_for.cppm
                     completion_signatures_of_t.cppm

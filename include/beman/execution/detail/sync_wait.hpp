@@ -16,7 +16,7 @@ import std;
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.apply_sender;
 import beman.execution.detail.as_except_ptr;
-import beman.execution.detail.completion_domain;
+import beman.execution.detail.compl_domain;
 import beman.execution.detail.connect;
 import beman.execution.detail.decayed_tuple;
 import beman.execution.detail.default_domain;
@@ -31,7 +31,7 @@ import beman.execution.detail.value_types_of_t;
 #else
 #include <beman/execution/detail/apply_sender.hpp>
 #include <beman/execution/detail/as_except_ptr.hpp>
-#include <beman/execution/detail/completion_domain.hpp>
+#include <beman/execution/detail/compl_domain.hpp>
 #include <beman/execution/detail/connect.hpp>
 #include <beman/execution/detail/decayed_tuple.hpp>
 #include <beman/execution/detail/default_domain.hpp>
@@ -117,14 +117,14 @@ struct sync_wait_t {
             typename ::beman::execution::detail::sync_wait_result_type<Sender>;
             {
                 ::beman::execution::apply_sender(
-                    ::beman::execution::detail::completion_domain<::beman::execution::set_value_t>(
+                    ::beman::execution::detail::compl_domain<::beman::execution::set_value_t>(
                         sender, ::beman::execution::detail::sync_wait_env{}),
                     self,
                     ::std::forward<Sender>(sender))
             } -> ::std::same_as<::beman::execution::detail::sync_wait_result_type<Sender>>;
         }
     auto operator()(Sender&& sender) const {
-        auto dom = ::beman::execution::detail::completion_domain<::beman::execution::set_value_t>(
+        auto dom = ::beman::execution::detail::compl_domain<::beman::execution::set_value_t>(
             sender, ::beman::execution::detail::sync_wait_env{});
         return ::beman::execution::apply_sender(dom, *this, ::std::forward<Sender>(sender));
     }
