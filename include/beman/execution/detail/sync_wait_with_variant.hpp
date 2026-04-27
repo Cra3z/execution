@@ -16,18 +16,22 @@ import std;
 import beman.execution.detail.apply_sender;
 import beman.execution.detail.callable;
 import beman.execution.detail.call_result_t;
+import beman.execution.detail.completion_domain;
 import beman.execution.detail.default_domain;
 import beman.execution.detail.into_variant;
 import beman.execution.detail.sender_in;
+import beman.execution.detail.set_value;
 import beman.execution.detail.sync_wait;
 import beman.execution.detail.value_types_of_t;
 #else
 #include <beman/execution/detail/apply_sender.hpp>
 #include <beman/execution/detail/callable.hpp>
 #include <beman/execution/detail/call_result_t.hpp>
+#include <beman/execution/detail/completion_domain.hpp>
 #include <beman/execution/detail/default_domain.hpp>
 #include <beman/execution/detail/into_variant.hpp>
 #include <beman/execution/detail/sender_in.hpp>
+#include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/sync_wait.hpp>
 #include <beman/execution/detail/value_types_of_t.hpp>
 #endif

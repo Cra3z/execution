@@ -46,11 +46,11 @@ struct transform_sndr_recurse {
     constexpr transform_sndr_recurse(Domain, Tag) noexcept {}
 
     template <typename Sndr, typename Env>
-    auto operator()(Sndr&& sndr, const Env& env) -> decltype(auto) {
+    auto operator()(Sndr&& sndr, const Env& env) {
         decltype(auto) new_sndr =
             ::beman::execution::detail::transformed_sndr(Domain(), Tag(), ::std::forward<Sndr>(sndr), env);
         if constexpr (::std::same_as<::std::decay_t<Sndr>, ::std::decay_t<decltype(new_sndr)>>) {
-            return static_cast<decltype(new_sndr)>(new_sndr);
+            return ::std::forward<decltype(new_sndr)>(new_sndr);
         } else {
             if constexpr (::std::same_as<Tag, ::beman::execution::start_t>) {
                 auto new_dom = ::beman::execution::get_domain(env);

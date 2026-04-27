@@ -21,6 +21,7 @@ import beman.execution.detail.movable_value;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.sender_for;
+import beman.execution.detail.set_value;
 #else
 #include <beman/execution/detail/forward_like.hpp>
 #include <beman/execution/detail/just.hpp>
@@ -30,6 +31,7 @@ import beman.execution.detail.sender_for;
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor_closure.hpp>
 #include <beman/execution/detail/sender_for.hpp>
+#include <beman/execution/detail/set_value.hpp>
 #endif
 
 namespace beman::execution::detail {

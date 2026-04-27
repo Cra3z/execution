@@ -23,6 +23,7 @@ import beman.execution.detail.make_sender;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.sender_for;
+import beman.execution.detail.set_value;
 import beman.execution.detail.single_sender;
 import beman.execution.detail.single_sender_value_type;
 import beman.execution.detail.then;
@@ -35,6 +36,7 @@ import beman.execution.detail.then;
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor_closure.hpp>
 #include <beman/execution/detail/sender_for.hpp>
+#include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/single_sender.hpp>
 #include <beman/execution/detail/single_sender_value_type.hpp>
 #include <beman/execution/detail/then.hpp>

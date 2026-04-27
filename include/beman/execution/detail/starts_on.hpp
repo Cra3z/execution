@@ -30,6 +30,7 @@ import beman.execution.detail.schedule;
 import beman.execution.detail.scheduler;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_for;
+import beman.execution.detail.set_value;
 import beman.execution.detail.transform_sender;
 #else
 #include <beman/execution/detail/continues_on.hpp>
@@ -50,6 +51,7 @@ import beman.execution.detail.transform_sender;
 #include <beman/execution/detail/schedule.hpp>
 #include <beman/execution/detail/scheduler.hpp>
 #include <beman/execution/detail/sender_for.hpp>
+#include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/transform_sender.hpp>
 #endif
 
