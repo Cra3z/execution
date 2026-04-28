@@ -21,10 +21,6 @@ import beman.execution.detail.indeterminate_domain;
 
 namespace beman::execution::detail {
 
-// COMMON-DOMAIN(domains...):
-//   common_type_t<decltype(auto(domains))...>() if well-formed,
-//   otherwise indeterminate_domain<Ds...>() where Ds is the pack of types
-//   consisting of decltype(auto(domains))... with duplicates removed.
 template <typename... Domains>
 struct common_domain_impl {
     using type = ::beman::execution::indeterminate_domain<Domains...>;
