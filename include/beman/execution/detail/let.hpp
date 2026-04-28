@@ -162,6 +162,10 @@ struct let_t {
         template <typename C, typename... A>
         struct apply_decayed<C(A...)> {
             using sender_type = ::beman::execution::detail::call_result_t<Fun, ::std::decay_t<A>...>;
+            using completions = ::std::conditional_t<
+                noexcept(::std::declval<Fun>()(std::declval<::std::decay_t<A>>()...)),
+                ::beman::execution::completion_signatures<>,
+                ::beman::execution::completion_signatures<::beman::execution::set_error_t(::std::exception_ptr)>>;
         };
         template <typename>
         struct get_completions;
@@ -169,7 +173,8 @@ struct let_t {
         struct get_completions<L<C...>> {
             using type = ::beman::execution::detail::meta::unique<::beman::execution::detail::meta::combine<
                 ::beman::execution::completion_signatures<>,
-                ::beman::execution::completion_signatures_of_t<typename apply_decayed<C>::sender_type, Env...>...>>;
+                ::beman::execution::completion_signatures_of_t<typename apply_decayed<C>::sender_type, Env...>...,
+                typename apply_decayed<C>::completions...>>;
         };
 
         using upstream_env         = typename let_upstream_env_helper<Child, 0 < sizeof...(Env), Env...>::type;
@@ -285,8 +290,9 @@ struct let_t {
                     try {
                         let_bind(state, receiver, ::std::forward<Args>(args)...);
                     } catch (...) {
-                        if constexpr (not noexcept(let_bind(state, receiver, ::std::forward<Args>(args)...)))
+                        if constexpr (not noexcept(let_bind(state, receiver, ::std::forward<Args>(args)...))) {
                             ::beman::execution::set_error(::std::move(receiver), ::std::current_exception());
+                        }
                     }
                 } else {
                     Tag()(::std::move(receiver), ::std::forward<Args>(args)...);

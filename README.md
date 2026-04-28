@@ -5,9 +5,7 @@ SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 <img src="https://github.com/bemanproject/beman/blob/main/images/logos/beman_logo-beman_library_under_development.png" style="width:5%; height:auto;">
 
-![Library Status](https://raw.githubusercontent.com/bemanproject/beman/refs/heads/main/images/badges/beman_badge-beman_library_under_development.svg)
-![Target Standard](https://github.com/bemanproject/beman/blob/main/images/badges/cpp26.svg)
-[![Coverage](https://coveralls.io/repos/github/bemanproject/execution/badge.svg?branch=main)](https://coveralls.io/github/bemanproject/execution?branch=main)
+![Library Status](https://raw.githubusercontent.com/bemanproject/beman/refs/heads/main/images/badges/beman_badge-beman_library_under_development.svg) ![Standard Target](https://github.com/bemanproject/beman/blob/main/images/badges/cpp26.svg) [![Coverage](https://coveralls.io/repos/github/bemanproject/execution/badge.svg?branch=main)](https://coveralls.io/github/bemanproject/execution?branch=main)
 
 `beman.execution` provides the basic vocabulary for asynchronous
 programming as well as important algorithms implemented in terms
@@ -41,7 +39,7 @@ e.g.:
 
 **Implements:** [`std::execution` (P2300R10)](http://wg21.link/P2300R10).
 
-**Status**: [Under development and not yet ready for production use.](https://github.com/bemanproject/beman/blob/main/docs/BEMAN_LIBRARY_MATURITY_MODEL.md#under-development-and-not-yet-ready-for-production-use)
+**Status**: [Under development and not yet ready for production use.](https://github.com/bemanproject/beman/blob/main/docs/beman_library_maturity_model.md#under-development-and-not-yet-ready-for-production-use)
 
 ## Help Welcome!
 
@@ -93,6 +91,10 @@ The implementation compiles and passes tests using [clang](https://clang.llvm.or
 | GCC      | 15-14   | C++26, C++23  | libstdc++        |
 | Clang    | 22-19   | C++26, C++23  | libc++           |
 | MSVC     | latest  | C++23         | MSVC STL         |
+
+## License
+
+beman.execution is licensed under the Apache License v2.0 with LLVM Exceptions.
 
 ## Examples
 

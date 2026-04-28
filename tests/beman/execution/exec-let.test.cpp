@@ -4,10 +4,12 @@
 #include <array>
 #include <cstdlib>
 #include <concepts>
+#include <exception>
 #include <memory_resource>
 #include <span>
 #include <vector>
 #include <test/execution.hpp>
+#include <test/completion_test.hpp>
 #ifdef BEMAN_HAS_MODULES
 import beman.execution;
 #else
@@ -120,6 +122,38 @@ auto test_let_value_env() -> void {
     ex::sync_wait(ex::just() | ex::let_value([] { return ex::read_env(ex::get_scheduler); }) |
                   ex::then([](auto s) { static_assert(ex::scheduler<decltype(s)>); }));
 }
+
+struct all_receiver {
+    using receiver_concept = test_std::receiver_t;
+    auto set_value(auto&&...) && noexcept {}
+    auto set_error(auto&&) && noexcept {}
+    auto set_stopped() && noexcept {}
+};
+
+auto test_completion_signatures() -> void {
+    test_std::sync_wait(
+        test::completion_test(test_std::just() | test_std::let_value([]() { return test_std::just(); })));
+    test_std::sync_wait(
+        test::completion_test(test_std::just() | test_std::let_value([]() noexcept { return test_std::just(); })));
+    test_std::sync_wait(test::completion_test(
+        test_std::just() | test_std::let_value([]() noexcept { return test_std::just_error(std::exception_ptr{}); })));
+
+    test_std::sync_wait(
+        test::completion_test(test_std::let_value(test_std::just(), []() noexcept { return test_std::just(); })));
+    static_assert(std::is_nothrow_move_constructible_v<decltype(test_std::just() | test_std::then([]() noexcept {}))>);
+    static_assert(
+        requires { test_std::connect(test_std::just() | test_std::then([]() noexcept {}), all_receiver{}); });
+    static_assert(noexcept(all_receiver{}));
+    static_assert(noexcept(test_std::just()));
+    static_assert(noexcept(test_std::just().connect(all_receiver{})));
+    static_assert(noexcept(test_std::connect(test_std::just(), all_receiver{})));
+    static_assert(noexcept(ex::then(test_std::just(), []() noexcept {})));
+    static_assert(noexcept(test_std::just() | ex::then([]() noexcept {})));
+    static_assert(noexcept((test_std::just() | test_std::then([]() noexcept {})).connect(all_receiver{})));
+    static_assert(noexcept(test_std::connect(test_std::just() | test_std::then([]() noexcept {}), all_receiver{})));
+    test_std::sync_wait(test::completion_test(test_std::let_value(
+        test_std::just(), []() noexcept { return test_std::just() | test_std::then([]() noexcept {}); })));
+}
 } // namespace
 
 // ----------------------------------------------------------------------------
@@ -133,6 +167,7 @@ TEST(exec_let) {
         test_let_value();
         test_let_value_allocator();
         test_let_value_env();
+        test_completion_signatures();
     } catch (...) {
         // NOLINTBEGIN(cert-dcl03-c,hicpp-static-assert,misc-static-assert)
         ASSERT(nullptr == "let tests are not expected to throw");

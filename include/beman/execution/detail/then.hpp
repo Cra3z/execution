@@ -36,7 +36,7 @@ import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.set_error;
 import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
-import beman.execution.detail.sender_adaptor_closure;
+import beman.execution.detail.transform_sender;
 #else
 #include <beman/execution/detail/call_result_t.hpp>
 #include <beman/execution/detail/completion_signatures.hpp>
@@ -59,7 +59,7 @@ import beman.execution.detail.sender_adaptor_closure;
 #include <beman/execution/detail/set_error.hpp>
 #include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
-#include <beman/execution/detail/sender_adaptor.hpp>
+#include <beman/execution/detail/transform_sender.hpp>
 #endif
 
 // ----------------------------------------------------------------------------
@@ -110,12 +110,15 @@ struct then_exception<Comp, Fun, ::beman::execution::completion_signatures<Compl
 template <typename Completion>
 struct then_t : ::beman::execution::sender_adaptor_closure<then_t<Completion>> {
     template <::beman::execution::detail::movable_value Fun>
-    auto operator()(Fun&& fun) const {
+    auto operator()(Fun&& fun) const noexcept(::std::is_nothrow_constructible_v<::std::remove_cvref_t<Fun>, Fun>) {
         return ::beman::execution::detail::make_sender_adaptor(*this, std::forward<decltype(fun)>(fun));
     }
     template <::beman::execution::sender Sender, ::beman::execution::detail::movable_value Fun>
-    auto operator()(Sender&& sender, Fun&& fun) const {
-        return ::beman::execution::detail::make_sender(*this, ::std::forward<Fun>(fun), ::std::forward<Sender>(sender));
+    auto operator()(Sender&& sender, Fun&& fun) const
+        noexcept(::std::is_nothrow_constructible_v<::std::remove_cvref_t<Sender>, Sender> &&
+                 ::std::is_nothrow_constructible_v<::std::remove_cvref_t<Fun>, Fun>) {
+        return ::beman::execution::detail::make_sender(
+            *this, ::std::forward<Fun>(fun), ::std::forward<Sender>(sender));
     }
     template <::beman::execution::sender Sender, typename Env>
         requires ::beman::execution::detail::nested_sender_has_affine_on<Sender, Env>
