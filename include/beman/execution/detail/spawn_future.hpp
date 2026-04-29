@@ -156,7 +156,7 @@ struct spawn_future_state
     using traits_t         = ::std::allocator_traits<alloc_t>;
     using spawned_sender_t = ::beman::execution::detail::future_spawned_sender<Sndr, Env>;
     using sigs_t           = ::beman::execution::detail::spawn_future_sigs<Sndr, Env>;
-    using receiver_tag       = ::beman::execution::detail::spawn_future_receiver<sigs_t>;
+    using receiver_tag     = ::beman::execution::detail::spawn_future_receiver<sigs_t>;
     static_assert(::beman::execution::sender<spawned_sender_t>);
     static_assert(::beman::execution::receiver<receiver_tag>);
     using op_t = ::beman::execution::connect_result_t<spawned_sender_t, receiver_tag>;

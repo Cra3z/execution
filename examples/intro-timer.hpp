@@ -76,7 +76,7 @@ struct intro::timer {
             auto set_stopped() noexcept -> void { this->self->run_one(); }
         };
         using operation_state_concept = ex::operation_state_tag;
-        using scheduler_tag             = decltype(ex::get_delegation_scheduler(ex::get_env(std::declval<Receiver&>())));
+        using scheduler_tag           = decltype(ex::get_delegation_scheduler(ex::get_env(std::declval<Receiver&>())));
         static_assert(ex::receiver<recv>);
         static_assert(ex::scheduler<scheduler_tag>);
         static_assert(ex::sender<decltype(ex::schedule(std::declval<scheduler_tag>()))>);

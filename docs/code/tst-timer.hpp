@@ -36,7 +36,7 @@ class tst::timer {
         template <tst::ex::receiver Receiver>
         struct state {
             using operation_state_concept = tst::ex::operation_state_tag;
-            using scheduler_tag             = decltype(ex::get_scheduler(ex::get_env(std::declval<Receiver>())));
+            using scheduler_tag           = decltype(ex::get_scheduler(ex::get_env(std::declval<Receiver>())));
             struct execute {
                 state* s{};
                 auto   operator()() noexcept -> void { this->s->await_one(); }
