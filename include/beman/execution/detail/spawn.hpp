@@ -43,7 +43,7 @@ struct spawn_t {
     };
 
     struct receiver {
-        using receiver_concept = ::beman::execution::receiver_t;
+        using receiver_concept = ::beman::execution::receiver_tag;
         state_base* state{};
 
         auto set_value() && noexcept -> void { this->state->complete(); }
@@ -87,8 +87,8 @@ struct spawn_t {
         auto new_sender{tok.wrap(::std::forward<Sender>(sender))};
         auto [all, senv] = ::beman::execution::detail::spawn_get_allocator(new_sender, env);
 
-        using sender_t = decltype(::beman::execution::write_env(::std::move(new_sender), senv));
-        using state_t  = state<decltype(all), Token, sender_t>;
+        using sender_tag = decltype(::beman::execution::write_env(::std::move(new_sender), senv));
+        using state_t  = state<decltype(all), Token, sender_tag>;
         using alloc_t  = typename ::std::allocator_traits<decltype(all)>::template rebind_alloc<state_t>;
         using traits_t = ::std::allocator_traits<alloc_t>;
         alloc_t  alloc(all);
