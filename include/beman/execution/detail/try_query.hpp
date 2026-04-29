@@ -8,7 +8,7 @@
 #ifdef BEMAN_HAS_IMPORT_STD
 import std;
 #else
-#include <concepts>
+#include <utility>
 #endif
 #if BEMAN_HAS_MODULES
 import beman.execution.detail.queryable;

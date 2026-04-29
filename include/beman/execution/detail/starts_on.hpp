@@ -59,16 +59,11 @@ import beman.execution.detail.transform_sender;
 
 namespace beman::execution::detail {
 
-// starts_on_attrs_t: attrs object for starts_on(sch, sndr).
-// When asked for its completion domain, it injects the scheduler's env into
-// the child's completion domain query (the child knows it will start on sch).
 template <typename Scheduler, typename ChildEnv>
 struct starts_on_attrs_t {
     Scheduler sch;
     ChildEnv  child_env;
 
-    // Answer get_completion_domain queries: delegate to the child's env with
-    // the scheduler's context (sched_env(sch)) prepended to rcvr_env.
     template <typename Tag, typename Env>
     auto query(::beman::execution::get_completion_domain_t<Tag>, const Env& rcvr_env) const noexcept {
         auto env_for_child = ::beman::execution::detail::join_env(::beman::execution::detail::sched_env(sch),
@@ -80,7 +75,6 @@ struct starts_on_attrs_t {
         }
     }
 
-    // Forward all other forwarding queries to child_env.
     template <typename Q, typename... Args>
         requires requires { ::std::as_const(child_env).query(::std::declval<Q>(), ::std::declval<Args>()...); }
     auto query(Q q, Args&&... args) const noexcept {
