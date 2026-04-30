@@ -30,7 +30,7 @@ import beman.execution.detail.set_value;
 
 // ----------------------------------------------------------------------------
 
-namespace beman::execution {
+namespace beman::execution::detail {
 struct get_domain_t : ::beman::execution::forwarding_query_t {
     template <typename Env>
     constexpr auto operator()(Env&& env) const noexcept {
@@ -48,7 +48,10 @@ struct get_domain_t : ::beman::execution::forwarding_query_t {
         }
     }
 };
+} // namespace beman::execution::detail
 
+namespace beman::execution {
+using get_domain_t = ::beman::execution::detail::get_domain_t;
 inline constexpr get_domain_t get_domain{};
 } // namespace beman::execution
 

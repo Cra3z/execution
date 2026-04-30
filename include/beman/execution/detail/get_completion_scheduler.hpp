@@ -35,7 +35,7 @@ template <::beman::execution::detail::completion_tag Tag>
 struct get_completion_scheduler_t;
 
 template <typename Tag, typename Q, typename... E>
-concept has_completion_scheduler = requires {
+concept compl_sched_recurse_queryable = requires {
     {
         ::beman::execution::detail::recurse_query(
             ::std::declval<const Q&>().query(
@@ -43,18 +43,19 @@ concept has_completion_scheduler = requires {
                 ::std::declval<const E&>()...),
             ::std::declval<const E&>()...)
     } -> ::beman::execution::scheduler;
-} || (::beman::execution::scheduler<Q> && sizeof...(E) > 0);
+};
 
 template <::beman::execution::detail::completion_tag Tag>
 struct get_completion_scheduler_t : ::beman::execution::forwarding_query_t {
     template <typename Q, typename... E>
-        requires ::beman::execution::detail::has_completion_scheduler<Tag, Q, E...>
+        requires ::beman::execution::detail::compl_sched_recurse_queryable<Tag, Q, E...> ||
+                 (::beman::execution::scheduler<Q> && sizeof...(E) > 0)
     auto operator()(const Q& q, const E&... e) const noexcept;
 };
 
 template <typename Scheduler, typename... Envs>
 auto recurse_query(Scheduler sch, const Envs&... envs) noexcept {
-    get_completion_scheduler_t<::beman::execution::set_value_t> get_compl_sch{};
+    ::beman::execution::detail::get_completion_scheduler_t<::beman::execution::set_value_t> get_compl_sch{};
     if constexpr (requires { ::std::as_const(sch).query(get_compl_sch, envs...); }) {
         auto sch2 = ::std::as_const(sch).query(get_compl_sch, envs...);
         if constexpr (::std::same_as<Scheduler, decltype(sch2)>) {
@@ -72,9 +73,10 @@ auto recurse_query(Scheduler sch, const Envs&... envs) noexcept {
 
 template <::beman::execution::detail::completion_tag Tag>
 template <typename Q, typename... E>
-    requires ::beman::execution::detail::has_completion_scheduler<Tag, Q, E...>
+    requires ::beman::execution::detail::compl_sched_recurse_queryable<Tag, Q, E...> ||
+             (::beman::execution::scheduler<Q> && sizeof...(E) > 0)
 auto get_completion_scheduler_t<Tag>::operator()(const Q& q, const E&... e) const noexcept {
-    if constexpr (requires { ::beman::execution::detail::recurse_query(q.query(*this, e...), e...); }) {
+    if constexpr (::beman::execution::detail::compl_sched_recurse_queryable<Tag, Q, E...>) {
         return ::beman::execution::detail::recurse_query(q.query(*this, e...), e...);
     } else {
         static_assert(::beman::execution::scheduler<Q> && sizeof...(E) > 0);

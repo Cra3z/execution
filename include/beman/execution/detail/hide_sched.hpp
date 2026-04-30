@@ -19,12 +19,10 @@ import beman.execution.detail.queryable;
 
 // ----------------------------------------------------------------------------
 
-namespace beman::execution {
+namespace beman::execution::detail {
 struct get_domain_t;
 struct get_scheduler_t;
-} // namespace beman::execution
 
-namespace beman::execution::detail {
 template <::beman::execution::detail::queryable Q>
 struct hide_sched_t {
     template <typename Tag, typename... Args>
@@ -34,10 +32,10 @@ struct hide_sched_t {
     }
 
     template <typename... Args>
-    auto query(::beman::execution::get_domain_t, Args&&... args) const noexcept -> void = delete;
+    auto query(::beman::execution::detail::get_domain_t, Args&&... args) const noexcept -> void = delete;
 
     template <typename... Args>
-    auto query(::beman::execution::get_scheduler_t, Args&&... args) const noexcept -> void = delete;
+    auto query(::beman::execution::detail::get_scheduler_t, Args&&... args) const noexcept -> void = delete;
 
     const Q& q;
 };

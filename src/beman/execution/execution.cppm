@@ -28,11 +28,11 @@ export import beman.execution.detail.execution_policy;
 import beman.execution.detail.forwarding_query;
 import beman.execution.detail.get_allocator;
 import beman.execution.detail.get_await_completion_adaptor;
+export import beman.execution.detail.get_completion_domain;
 export import beman.execution.detail.get_completion_scheduler;
 export import beman.execution.detail.get_completion_signatures; // [exec.getcomplsigs], completion signatures
 import beman.execution.detail.get_delegation_scheduler;
 import beman.execution.detail.get_domain;
-import beman.execution.detail.get_completion_domain;
 import beman.execution.detail.get_env;
 import beman.execution.detail.get_forward_progress_guarantee;
 import beman.execution.detail.get_scheduler;
@@ -136,14 +136,12 @@ export using ::beman::execution::get_stop_token;
 export using ::beman::execution::stop_token_of_t;
 
 export using ::beman::execution::get_domain_t;
-export using ::beman::execution::get_completion_domain_t;
 export using ::beman::execution::get_scheduler_t;
 export using ::beman::execution::get_delegation_scheduler_t;
 export using ::beman::execution::get_await_completion_adaptor_t;
 export using ::beman::execution::get_forward_progress_guarantee_t;
 
 export using ::beman::execution::get_domain;
-export using ::beman::execution::get_completion_domain;
 export using ::beman::execution::get_scheduler;
 export using ::beman::execution::get_delegation_scheduler;
 export using ::beman::execution::get_await_completion_adaptor;

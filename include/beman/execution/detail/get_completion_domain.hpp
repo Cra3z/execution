@@ -37,28 +37,28 @@ import beman.execution.detail.try_query;
 namespace beman::execution::detail {
 struct no_completion_domain {};
 
-template <typename T = void>
-    requires ::std::same_as<T, void> || ::beman::execution::detail::completion_tag<T>
+template <typename Tag = void>
+    requires ::std::same_as<Tag, void> || ::beman::execution::detail::completion_tag<Tag>
 struct get_completion_domain_t : ::beman::execution::forwarding_query_t {
     template <typename Q, typename... E>
     static auto impl(Q&& q, E&&... e) noexcept {
         if constexpr (requires {
                           ::beman::execution::detail::try_query(
-                              ::std::forward<Q>(q), get_completion_domain_t<T>{}, ::std::forward<E>(e)...);
+                              ::std::forward<Q>(q), get_completion_domain_t<Tag>{}, ::std::forward<E>(e)...);
                       }) {
             return ::beman::execution::detail::try_query(
-                ::std::forward<Q>(q), get_completion_domain_t<T>{}, ::std::forward<E>(e)...);
-        } else if constexpr (::std::same_as<T, void>) {
+                ::std::forward<Q>(q), get_completion_domain_t<Tag>{}, ::std::forward<E>(e)...);
+        } else if constexpr (::std::same_as<Tag, void>) {
             return get_completion_domain_t<::beman::execution::set_value_t>::impl(::std::forward<Q>(q),
                                                                                   ::std::forward<E>(e)...);
         } else if constexpr (requires {
                                  ::beman::execution::detail::try_query(
-                                     ::beman::execution::get_completion_scheduler<T>(q, e...),
+                                     ::beman::execution::get_completion_scheduler<Tag>(q, e...),
                                      get_completion_domain_t<::beman::execution::set_value_t>{},
                                      ::std::forward<Q>(q),
                                      ::std::forward<E>(e)...);
                              }) {
-            return ::beman::execution::detail::try_query(::beman::execution::get_completion_scheduler<T>(q, e...),
+            return ::beman::execution::detail::try_query(::beman::execution::get_completion_scheduler<Tag>(q, e...),
                                                          get_completion_domain_t<::beman::execution::set_value_t>{},
                                                          ::std::forward<Q>(q),
                                                          ::std::forward<E>(e)...);
@@ -83,10 +83,12 @@ struct get_completion_domain_t : ::beman::execution::forwarding_query_t {
 } // namespace beman::execution::detail
 
 namespace beman::execution {
-template <typename CPO = void>
-using get_completion_domain_t = detail::get_completion_domain_t<CPO>;
-template <typename CPO = void>
-inline constexpr get_completion_domain_t<CPO> get_completion_domain{};
+template <typename Tag = void>
+    requires ::std::same_as<Tag, void> || ::beman::execution::detail::completion_tag<Tag>
+using get_completion_domain_t = ::beman::execution::detail::get_completion_domain_t<Tag>;
+template <typename Tag = void>
+    requires ::std::same_as<Tag, void> || ::beman::execution::detail::completion_tag<Tag>
+inline constexpr get_completion_domain_t<Tag> get_completion_domain{};
 } // namespace beman::execution
 
 // ----------------------------------------------------------------------------
