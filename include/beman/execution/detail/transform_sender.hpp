@@ -33,7 +33,7 @@ import beman.execution.detail.start;
 namespace beman::execution::detail {
 
 template <typename Domain, typename Tag, typename Sndr, typename Env>
-auto transformed_sndr(Domain dom, Tag tag, Sndr&& sndr, const Env& env) -> decltype(auto) {
+auto transformed_sndr(Domain dom, Tag tag, Sndr&& sndr, const Env& env) {
     if constexpr (requires { dom.transform_sender(tag, ::std::forward<Sndr>(sndr), env); }) {
         return dom.transform_sender(tag, ::std::forward<Sndr>(sndr), env);
     } else {
@@ -65,7 +65,7 @@ struct transform_sndr_recurse {
 
 namespace beman::execution {
 template <::beman::execution::sender Sndr, typename Env>
-auto transform_sender(Sndr&& sndr, const Env& env) -> ::beman::execution::sender decltype(auto) {
+auto transform_sender(Sndr&& sndr, const Env& env) -> ::beman::execution::sender auto {
     auto starting_domain   = ::beman::execution::get_domain(env);
     auto completion_domain = ::beman::execution::detail::compl_domain(sndr, env);
     auto starting_transform =
