@@ -1,9 +1,16 @@
 // src/beman/execution/tests/stoptoken-concepts.test.cpp
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-#include <beman/execution/stop_token.hpp>
 #include <type_traits>
-#include "test/execution.hpp"
+#include <test/execution.hpp>
+#ifdef BEMAN_HAS_MODULES
+import beman.execution;
+import beman.execution.detail.stop_callback_for_t;
+import beman.execution.detail.stoppable_callback_for;
+import beman.execution.detail.stoppable_source;
+#else
+#include <beman/execution/stop_token.hpp>
+#endif
 
 namespace {
 namespace detail_stopppable_callback_for {
