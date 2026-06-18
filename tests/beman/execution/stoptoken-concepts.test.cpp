@@ -1,7 +1,11 @@
 // src/beman/execution/tests/stoptoken-concepts.test.cpp
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+#include <version>
 #include <type_traits>
+#ifdef __cpp_lib_jthread
+#include <stop_token>
+#endif
 #include <test/execution.hpp>
 #ifdef BEMAN_HAS_MODULES
 import beman.execution;
@@ -245,6 +249,11 @@ auto test_detail_stoppable_source() -> void {
 } // namespace
 
 TEST(stoptoken_concepts) {
+    static_assert(test_std::stoppable_token<test_std::inplace_stop_token>);
+    static_assert(test_std::stoppable_token<test_std::never_stop_token>);
+#ifdef __cpp_lib_jthread
+    static_assert(test_std::stoppable_token<std::stop_token>);
+#endif
     test_detail_stopppable_callback_for();
     test_stoppable_token();
     test_unstoppable_token();

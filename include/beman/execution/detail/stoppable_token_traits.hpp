@@ -1,11 +1,24 @@
-// include/beman/execution/detail/stop_token_traits.hpp               -*-C++-*-
+// include/beman/execution/detail/stoppable_token_traits.hpp               -*-C++-*-
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-#ifndef INCLUDED_BEMAN_EXECUTION_DETAIL_STOP_TOKEN_TRAITS
-#define INCLUDED_BEMAN_EXECUTION_DETAIL_STOP_TOKEN_TRAITS
+#ifndef INCLUDED_BEMAN_EXECUTION_DETAIL_STOPPABLE_TOKEN_TRAITS
+#define INCLUDED_BEMAN_EXECUTION_DETAIL_STOPPABLE_TOKEN_TRAITS
 
-#include <beman/execution/detail/check_type_alias_exist.hpp>
+#include <version>
+#include <beman/execution/detail/common.hpp>
+#ifdef BEMAN_HAS_IMPORT_STD
+import std;
+#else
+#include <concepts>
+#ifdef __cpp_lib_jthread
 #include <stop_token>
+#endif
+#endif
+#ifdef BEMAN_HAS_MODULES
+import beman.execution.detail.check_type_alias_exist;
+#else
+#include <beman/execution/detail/check_type_alias_exist.hpp>
+#endif
 
 // ----------------------------------------------------------------------------
 
@@ -20,7 +33,7 @@ struct stoppable_token_traits<Token> {
     using callback_type = typename Token::template callback_type<Fn>;
 };
 
-#if not defined(__clang__) || __clang_major__ > 19
+#ifdef __cpp_lib_jthread
 template <>
 struct stoppable_token_traits<::std::stop_token> {
     template <typename Fn>
@@ -31,4 +44,4 @@ struct stoppable_token_traits<::std::stop_token> {
 
 // ----------------------------------------------------------------------------
 
-#endif
+#endif // INCLUDED_BEMAN_EXECUTION_DETAIL_STOPPABLE_TOKEN_TRAITS

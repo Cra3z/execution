@@ -10,6 +10,11 @@ import std;
 #else
 #include <concepts>
 #endif
+#ifdef BEMAN_HAS_MODULES
+import beman.execution.detail.stoppable_token_traits;
+#else
+#include <beman/execution/detail/stoppable_token_traits.hpp>
+#endif
 
 // ----------------------------------------------------------------------------
 
