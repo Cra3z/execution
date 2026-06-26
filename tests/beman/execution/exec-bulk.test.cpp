@@ -391,10 +391,10 @@ struct pstl_for_each_sender {
         template <typename... Args>
         auto set_value(Args&&... args) noexcept -> void {
             try {
-                auto iota = std::views::iota(Shape(0), shape);
-                std::for_each(policy, std::ranges::begin(iota), std::ranges::end(iota), [&](Shape i) {
+                auto indices = std::views::iota(Shape(0), shape);
+                std::for_each(policy, std::ranges::begin(indices), std::ranges::end(indices), [&](Shape i) {
                     if constexpr (IsChunked) {
-                        std::invoke(fn, i, i + 1, args...);
+                        std::invoke(fn, i, i + Shape(1), args...);
                     } else {
                         std::invoke(fn, i, args...);
                     };
@@ -430,7 +430,8 @@ struct pstl_for_each_sender {
 
     template <typename Rcvr>
     auto connect(Rcvr rcvr) && noexcept {
-        return test_std::connect(child, receiver{std::move(rcvr), std::move(policy), std::move(shape), std::move(fn)});
+        return test_std::connect(std::move(child),
+                                 receiver{std::move(rcvr), std::move(policy), std::move(shape), std::move(fn)});
     }
 
     auto get_env() const noexcept { return test_std::get_env(child); }
