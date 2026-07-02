@@ -193,6 +193,7 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stop_when.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stoppable_source.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stoppable_token.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stoppable_token_traits.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stopped_as_error.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stopped_as_optional.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/store_receiver.hpp
@@ -396,6 +397,7 @@ if(BEMAN_USE_MODULES)
                     stop_when.cppm
                     stoppable_source.cppm
                     stoppable_token.cppm
+                    stoppable_token_traits.cppm
                     stopped_as_error.cppm
                     stopped_as_optional.cppm
                     store_receiver.cppm

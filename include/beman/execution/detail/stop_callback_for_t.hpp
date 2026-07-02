@@ -10,12 +10,18 @@ import std;
 #else
 #include <concepts>
 #endif
+#ifdef BEMAN_HAS_MODULES
+import beman.execution.detail.stoppable_token_traits;
+#else
+#include <beman/execution/detail/stoppable_token_traits.hpp>
+#endif
 
 // ----------------------------------------------------------------------------
 
 namespace beman::execution {
 template <class Token, class CallbackFun>
-using stop_callback_for_t = typename Token::template callback_type<CallbackFun>;
+using stop_callback_for_t =
+    typename ::beman::execution::detail::stoppable_token_traits<Token>::template callback_type<CallbackFun>;
 }
 
 namespace beman::execution::detail {
