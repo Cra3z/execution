@@ -86,6 +86,7 @@ struct spawn_t {
     };
 
     template <::beman::execution::sender Sender, ::beman::execution::scope_token Token, typename Env>
+        requires ::beman::execution::detail::queryable<::std::remove_cvref_t<Env>>
     auto operator()(Sender&& sender, const Token& tok, Env&& env) const {
         auto new_sender{tok.wrap(::std::forward<Sender>(sender))};
         auto [all, senv] = ::beman::execution::detail::spawn_get_allocator(new_sender, env);
@@ -96,7 +97,12 @@ struct spawn_t {
         using traits_t = ::std::allocator_traits<alloc_t>;
         alloc_t  alloc(all);
         state_t* op{traits_t::allocate(alloc, 1u)};
-        traits_t::construct(alloc, op, all, ::beman::execution::write_env(::std::move(new_sender), senv), tok);
+        try {
+            traits_t::construct(alloc, op, all, ::beman::execution::write_env(::std::move(new_sender), senv), tok);
+        } catch (...) {
+            traits_t::deallocate(alloc, op, 1u);
+            throw;
+        }
     }
     template <::beman::execution::sender Sender, ::beman::execution::scope_token Token>
     auto operator()(Sender&& sender, const Token& token) const {
