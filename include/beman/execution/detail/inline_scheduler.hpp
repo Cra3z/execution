@@ -13,6 +13,7 @@ import std;
 #include <utility>
 #endif
 #ifdef BEMAN_HAS_MODULES
+import beman.execution.detail.get_scheduler;
 import beman.execution.detail.sender;
 import beman.execution.detail.receiver;
 import beman.execution.detail.set_value;
@@ -59,6 +60,8 @@ struct inline_scheduler {
             -> state<Rcvr> {
             return {::std::forward<Rcvr>(receiver)};
         }
+
+        inline_scheduler query(const ::beman::execution::get_scheduler_t&) const noexcept { return {}; }
     };
 
     static constexpr auto schedule() noexcept -> sender { return {}; }
