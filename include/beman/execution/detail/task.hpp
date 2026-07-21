@@ -58,7 +58,9 @@ import beman.execution.detail.with_error;
 #include <beman/execution/detail/set_error.hpp>
 #include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
+#include <beman/execution/detail/state_rep.hpp>
 #include <beman/execution/detail/stoppable_token.hpp>
+#include <beman/execution/detail/sub_visit.hpp>
 #include <beman/execution/detail/task_scheduler.hpp>
 #include <beman/execution/detail/with_error.hpp>
 #endif
@@ -66,6 +68,9 @@ import beman.execution.detail.with_error;
 // ----------------------------------------------------------------------------
 
 namespace beman::execution::detail::task {
+template <typename Coroutine, typename Value, typename Environment>
+class promise_type;
+
 template <typename P>
 class handle {
   private:
@@ -96,11 +101,11 @@ template <typename Allocator>
 struct allocator_support {
     using allocator_traits = std::allocator_traits<Allocator>;
 
-    static std::size_t offset(std::size_t size) noexcept {
+    static auto offset(std::size_t size) noexcept -> ::std::size_t {
         return (size + alignof(Allocator) - 1u) & ~(alignof(Allocator) - 1u);
     }
 
-    static Allocator* get_allocator(void* ptr, std::size_t size) noexcept {
+    static auto get_allocator(void* ptr, ::std::size_t size) noexcept -> Allocator* {
         ptr = static_cast<std::byte*>(ptr) + offset(size);
         return ::std::launder(reinterpret_cast<Allocator*>(ptr));
     }
@@ -208,6 +213,342 @@ struct stop_source_of<Context> {
 template <typename Context>
 using stop_source_of_t = typename stop_source_of<Context>::type;
 
+struct void_type {};
+
+template <typename Value, typename Errors>
+class result_type;
+
+template <typename Value, typename... Error>
+class result_type<Value, ::beman::execution::completion_signatures<::beman::execution::set_error_t(Error)...>> {
+  private:
+    using value_type = ::std::conditional_t<::std::same_as<void, Value>, void_type, Value>;
+
+    ::std::variant<std::monostate, value_type, Error...> result;
+
+    template <size_t I, typename E, typename Err, typename... Errs>
+    static constexpr ::std::size_t find_index() {
+        if constexpr (std::same_as<E, Err>)
+            return I;
+        else {
+            static_assert(0u != sizeof...(Errs), "error type not found in result type");
+            return find_index<I + 1u, E, Errs...>();
+        }
+    }
+
+  public:
+    template <typename T>
+    auto set_value(T&& value) -> void {
+        this->result.template emplace<1u>(::std::forward<T>(value));
+    }
+
+    template <typename E>
+    auto set_error(E&& error) -> void {
+        this->result.template emplace<2u + find_index<0u, ::std::remove_cvref_t<E>, Error...>()>(
+            ::std::forward<E>(error));
+    }
+
+    auto no_completion_set() const noexcept -> bool { return this->result.index() == 0u; }
+
+    template <::beman::execution::receiver Receiver>
+    auto result_complete(Receiver&& rcvr) -> void {
+        switch (this->result.index()) {
+        case 0:
+            ::beman::execution::set_stopped(::std::move(rcvr));
+            break;
+        case 1:
+            if constexpr (::std::same_as<void_type, value_type>)
+                ::beman::execution::set_value(::std::move(rcvr));
+            else
+                ::beman::execution::set_value(::std::move(rcvr), ::std::move(::std::get<1u>(this->result)));
+            break;
+        default:
+            if constexpr (0u < sizeof...(Error))
+                ::beman::execution::detail::sub_visit<2u>(
+                    [&rcvr](auto& error) { ::beman::execution::set_error(::std::move(rcvr), ::std::move(error)); },
+                    this->result);
+            break;
+        }
+    }
+    auto result_resume() {
+        switch (this->result.index()) {
+        case 0:
+            std::terminate(); // should never come here!
+            break;
+        case 1:
+            break;
+        default:
+            if constexpr (0u < sizeof...(Error))
+                ::beman::execution::detail::sub_visit<2u>(
+                    []<typename E>(E& error) {
+                        if constexpr (::std::same_as<::std::remove_cvref_t<E>, ::std::exception_ptr>)
+                            std::rethrow_exception(::std::move(error));
+                        else
+                            throw ::std::move(error);
+                    },
+                    this->result);
+            std::terminate(); // should never come here!
+            break;
+        }
+        if constexpr (::std::same_as<void_type, value_type>)
+            return;
+        else
+            return ::std::move(::std::get<1u>(this->result));
+    }
+};
+template <typename Value>
+class result_type<Value, ::beman::execution::completion_signatures<>> {
+  private:
+    using value_type = ::std::conditional_t<::std::same_as<void, Value>, void_type, Value>;
+
+    ::std::variant<std::monostate, value_type> result;
+
+    template <size_t I, typename E, typename Err, typename... Errs>
+    static constexpr auto find_index() -> ::std::size_t {
+        if constexpr (std::same_as<E, Err>)
+            return I;
+        else {
+            static_assert(0u != sizeof...(Errs), "error type not found in result type");
+            return find_index<I + 1u, E, Errs...>();
+        }
+    }
+
+  public:
+    template <typename T>
+    auto set_value(T&& value) -> void {
+        this->result.template emplace<1u>(::std::forward<T>(value));
+    }
+    auto no_completion_set() const noexcept -> bool { return this->result.index() == 0u; }
+
+    template <::beman::execution::receiver Receiver>
+    auto result_complete(Receiver&& rcvr) -> void {
+        switch (this->result.index()) {
+        case 0:
+            ::beman::execution::set_stopped(::std::move(rcvr));
+            break;
+        case 1:
+            if constexpr (::std::same_as<void_type, value_type>)
+                ::beman::execution::set_value(::std::move(rcvr));
+            else
+                ::beman::execution::set_value(::std::move(rcvr), ::std::move(::std::get<1u>(this->result)));
+            break;
+        default:
+            std::terminate(); // should never come here!
+            break;
+        }
+    }
+    auto result_resume() {
+        switch (this->result.index()) {
+        case 0:
+            std::terminate(); // should never come here!
+            break;
+        case 1:
+            break;
+        default:
+            std::terminate(); // should never come here!
+            break;
+        }
+        if constexpr (::std::same_as<void_type, value_type>)
+            return;
+        else
+            return ::std::move(::std::get<1u>(this->result));
+    }
+};
+
+template <typename Value, typename Environment>
+class state_base : public result_type<Value, error_types_of_t<Environment>> {
+  public:
+    using allocator_type   = allocator_of_t<Environment>;
+    using stop_source_type = stop_source_of_t<Environment>;
+    using stop_token_type  = decltype(::std::declval<stop_source_type>().get_token());
+    using scheduler_type   = start_scheduler_of_t<Environment>;
+
+    auto complete() -> std::coroutine_handle<> { return this->do_complete(); }
+    auto get_allocator() -> allocator_type { return this->do_get_allocator(); }
+    auto get_stop_token() -> stop_token_type { return this->do_get_stop_token(); }
+    auto get_environment() -> Environment& {
+        assert(this);
+        return this->do_get_environment();
+    }
+    auto get_start_scheduler() -> scheduler_type { return this->do_get_start_scheduler(); }
+    auto set_start_scheduler(scheduler_type other) -> scheduler_type { return this->do_set_start_scheduler(other); }
+
+  protected:
+    template <::beman::execution::scheduler Scheduler, typename Env>
+    static auto from_env(const Env& env) {
+        if constexpr (requires { Scheduler(::beman::execution::get_start_scheduler(env)); }) {
+            return Scheduler(::beman::execution::get_start_scheduler(env));
+        } else if constexpr (requires { Scheduler(::beman::execution::get_scheduler(env)); }) {
+            return Scheduler(::beman::execution::get_scheduler(env));
+        } else {
+            return Scheduler();
+        }
+    }
+
+    // NOLINTBEGIN(portability-template-virtual-member-function)
+    virtual auto do_complete() -> std::coroutine_handle<>                       = 0;
+    virtual auto do_get_allocator() -> allocator_type                           = 0;
+    virtual auto do_get_stop_token() -> stop_token_type                         = 0;
+    virtual auto do_get_environment() -> Environment&                           = 0;
+    virtual auto do_get_start_scheduler() -> scheduler_type                     = 0;
+    virtual auto do_set_start_scheduler(scheduler_type other) -> scheduler_type = 0;
+    // NOLINTEND(portability-template-virtual-member-function)
+
+    virtual ~state_base() = default;
+};
+
+template <typename Task, typename T, typename C, typename Receiver>
+struct state : state_base<T, C>, ::beman::execution::detail::state_rep<C, Receiver> {
+    using operation_state_concept = ::beman::execution::operation_state_tag;
+    using promise_type            = promise_type<Task, T, C>;
+    using scheduler_type          = typename state_base<T, C>::scheduler_type;
+    using allocator_type          = typename state_base<T, C>::allocator_type;
+    using stop_source_type        = typename state_base<T, C>::stop_source_type;
+    using stop_token_type         = typename state_base<T, C>::stop_token_type;
+    using stop_token_t =
+        decltype(::beman::execution::get_stop_token(::beman::execution::get_env(std::declval<Receiver>())));
+    struct stop_link {
+        stop_source_type& source;
+        void              operator()() const noexcept { source.request_stop(); }
+    };
+    using stop_callback_t = ::beman::execution::stop_callback_for_t<stop_token_t, stop_link>;
+    template <typename R, typename H>
+    state(R&& r, H h) noexcept //-dk:TODO break down to various members
+        : state_rep<C, Receiver>(std::forward<R>(r)),
+          handle(std::move(h)),
+          scheduler(this->template from_env<scheduler_type>(::beman::execution::get_env(this->receiver))) {}
+
+    handle<promise_type>           handle;
+    stop_source_type               source;
+    std::optional<stop_callback_t> stop_callback;
+    scheduler_type                 scheduler;
+
+    auto                    start() & noexcept -> void { this->handle.start(this).resume(); }
+    std::coroutine_handle<> do_complete() override {
+        this->handle.reset();
+        this->result_complete(::std::move(this->receiver));
+        return std::noop_coroutine();
+    }
+    auto do_get_allocator() -> allocator_type override {
+        if constexpr (requires {
+                          allocator_type(
+                              ::beman::execution::get_allocator(::beman::execution::get_env(this->receiver)));
+                      })
+            return allocator_type(::beman::execution::get_allocator(::beman::execution::get_env(this->receiver)));
+        else
+            return allocator_type{};
+    }
+    auto do_get_start_scheduler() -> scheduler_type override { return this->scheduler; }
+    auto do_set_start_scheduler(scheduler_type other) -> scheduler_type override {
+        return ::std::exchange(this->scheduler, other);
+    }
+    auto do_get_stop_token() -> stop_token_type override {
+        if (this->source.stop_possible() && not this->stop_callback) {
+            this->stop_callback.emplace(
+                ::beman::execution::get_stop_token(::beman::execution::get_env(this->receiver)),
+                stop_link{this->source});
+        }
+        return this->source.get_token();
+    }
+    auto do_get_environment() -> C& override { return this->context; }
+};
+
+template <typename Awaiter>
+struct awaiter_scheduler_receiver {
+    using receiver_concept = ::beman::execution::receiver_tag;
+    Awaiter* aw;
+    auto     set_value(auto&&...) noexcept { this->aw->actual_complete().resume(); }
+    auto     set_error(auto&&) noexcept { this->aw->actual_complete().resume(); }
+    auto     set_stopped() noexcept { this->aw->actual_complete().resume(); }
+};
+
+template <typename Awaiter,
+          typename ParentPromise,
+          bool = requires(
+              const ParentPromise& p) { ::beman::execution::get_start_scheduler(::beman::execution::get_env(p)); }>
+struct awaiter_op_t {
+    using state_type =
+        decltype(::beman::execution::connect(::beman::execution::schedule(::beman::execution::get_start_scheduler(
+                                                 ::beman::execution::get_env(::std::declval<const ParentPromise&>()))),
+                                             ::std::declval<awaiter_scheduler_receiver<Awaiter>>()));
+
+    awaiter_op_t(const ParentPromise& p, Awaiter* aw)
+        : state(::beman::execution::connect(
+              ::beman::execution::schedule(beman::execution::get_start_scheduler(::beman::execution::get_env(p))),
+              awaiter_scheduler_receiver<Awaiter>{aw})) {}
+    state_type state;
+    auto       start() noexcept -> void { ::beman::execution::start(this->state); }
+};
+template <typename Awaiter, typename ParentPromise>
+struct awaiter_op_t<Awaiter, ParentPromise, false> {
+    awaiter_op_t(const ParentPromise&, Awaiter*) noexcept {}
+    auto start() noexcept -> void {}
+};
+
+template <typename Value, typename Env, typename OwnPromise, typename ParentPromise>
+class awaiter : public state_base<Value, Env> {
+  public:
+    using allocator_type  = typename state_base<Value, Env>::allocator_type;
+    using stop_token_type = typename state_base<Value, Env>::stop_token_type;
+    using scheduler_type  = typename state_base<Value, Env>::scheduler_type;
+
+    explicit awaiter(handle<OwnPromise> h) : handle(std::move(h)) {}
+    constexpr auto await_ready() const noexcept -> bool { return false; }
+    struct env_receiver {
+        ParentPromise* parent;
+        auto           get_env() const noexcept { return parent->get_env(); }
+    };
+    auto await_suspend(::std::coroutine_handle<ParentPromise> parent) noexcept {
+        this->state_rep.emplace(env_receiver{&parent.promise()});
+        this->scheduler.emplace(
+            this->template from_env<scheduler_type>(::beman::execution::get_env(parent.promise())));
+        this->parent = ::std::move(parent);
+        return this->handle.start(this);
+    }
+    auto await_resume() { return this->result_resume(); }
+
+  private:
+    friend struct awaiter_scheduler_receiver<awaiter>;
+    auto do_complete() -> std::coroutine_handle<> override {
+        assert(this->parent);
+        assert(this->scheduler);
+        if constexpr (requires {
+                          *this->scheduler != ::beman::execution::get_start_scheduler(
+                                                  ::beman::execution::get_env(this->parent.promise()));
+                      }) {
+            if (*this->scheduler !=
+                ::beman::execution::get_start_scheduler(::beman::execution::get_env(this->parent.promise()))) {
+                this->reschedule.emplace(this->parent.promise(), this);
+                this->reschedule->start();
+                return ::std::noop_coroutine();
+            }
+        }
+        return this->actual_complete();
+    }
+    auto actual_complete() -> std::coroutine_handle<> {
+        return this->no_completion_set() ? this->parent.promise().unhandled_stopped() : ::std::move(this->parent);
+    }
+    auto do_get_allocator() -> allocator_type override {
+        if constexpr (requires {
+                          ::beman::execution::get_allocator(::beman::execution::get_env(this->parent.promise()));
+                      })
+            return ::beman::execution::get_allocator(::beman::execution::get_env(this->parent.promise()));
+        else
+            return allocator_type{};
+    }
+    auto do_get_start_scheduler() -> scheduler_type override { return *this->scheduler; }
+    auto do_set_start_scheduler(scheduler_type other) -> scheduler_type override {
+        return ::std::exchange(*this->scheduler, other);
+    }
+    auto do_get_stop_token() -> stop_token_type override { return {}; }
+    auto do_get_environment() -> Env& override { return this->state_rep->context; }
+
+    handle<OwnPromise>                                                        handle;
+    ::std::optional<::beman::execution::detail::state_rep<Env, env_receiver>> state_rep;
+    ::std::optional<scheduler_type>                                           scheduler;
+    ::std::coroutine_handle<ParentPromise>                                    parent{};
+    ::std::optional<awaiter_op_t<awaiter, ParentPromise>>                     reschedule{};
+};
+
 template <typename Promise>
 struct promise_env {
     const Promise* promise;
@@ -238,12 +579,51 @@ struct promise_env {
     }
 };
 
+struct final_awaiter {
+    static constexpr auto await_ready() noexcept -> bool { return false; }
+
+    template <typename Promise>
+    static auto await_suspend(std::coroutine_handle<Promise> handle) noexcept {
+        return handle.promise().notify_complete();
+    }
+
+    static constexpr void await_resume() noexcept {}
+};
+
+template <typename Value, typename Environment>
+class promise_base {
+  public:
+    template <typename T = Value>
+    void return_value(T&& value) {
+        this->get_state()->set_value(::std::forward<T>(value));
+    }
+
+  public:
+    auto set_state(state_base<Value, Environment>* s) noexcept -> void { this->state_ = s; }
+    auto get_state() const noexcept -> state_base<Value, Environment>* { return this->state_; }
+
+  private:
+    state_base<Value, Environment>* state_{};
+};
+
+template <typename Environment>
+class promise_base<void, Environment> {
+  public:
+    void return_void() { this->get_state()->set_value(void_type{}); }
+
+  public:
+    auto set_state(state_base<void, Environment>* s) noexcept -> void { this->state_ = s; }
+
+    auto get_state() const noexcept -> state_base<void, Environment>* { return this->state_; }
+
+  private:
+    state_base<void, Environment>* state_{};
+};
+
 template <typename Coroutine, typename Value, typename Environment>
-class promise_type
-    : public ::beman::execution::detail::task::
-          promise_base<::beman::execution::detail::task::stoppable::yes, ::std::remove_cvref_t<Value>, Environment>,
-      public ::beman::execution::detail::task::allocator_support<
-          ::beman::execution::detail::task::allocator_of_t<Environment>> {
+class promise_type : public ::beman::execution::detail::task::promise_base<::std::remove_cvref_t<Value>, Environment>,
+                     public ::beman::execution::detail::task::allocator_support<
+                         ::beman::execution::detail::task::allocator_of_t<Environment>> {
   public:
     using allocator_type   = allocator_of_t<Environment>;
     using scheduler_type   = start_scheduler_of_t<Environment>;
@@ -322,7 +702,8 @@ class task {
     using stop_source_type      = ::beman::execution::detail::task::stop_source_of_t<Env>;
     using stop_token_type       = decltype(::std::declval<stop_source_type>().get_token());
     using completion_signatures = ::beman::execution::detail::meta::combine<
-        ::beman::execution::completion_signatures<::beman::execution::detail::task::completion_t<Value>>,
+        ::beman::execution::completion_signatures<::beman::execution::detail::task::completion_t<Value>,
+                                                  ::beman::execution::set_stopped_t()>,
         ::beman::execution::detail::task::error_types_of_t<Env>>;
 
     task(const task&) = delete;
