@@ -282,7 +282,7 @@ $(document).ready(function(){initNavTree('psched__bulk__sender_8hpp_source.html'
 <div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span>            <span class="keyword">auto</span> <a class="code hl_variable" href="namespacebeman_1_1execution.html#a88ba134b297e5c0b06590a57ae9d5dfe">set_value</a>(Args&amp;&amp;... args) <span class="keyword">noexcept</span> -&gt; <span class="keywordtype">void</span> <span class="keywordflow">try</span> {</div>
 <div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span>                <span class="keyword">using </span>arg_t = ::beman::execution::detail::decayed_tuple&lt;Args...&gt;;</div>
 <div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span>                proxy-&gt;result.template emplace&lt;arg_t&gt;(::std::forward&lt;Args&gt;(args)...);</div>
-<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span>                <span class="keywordflow">if</span> (proxy-&gt;backend == <span class="keyword">nullptr</span>) [[unlikely]] {</div>
+<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span>                <span class="keywordflow">if</span> (!proxy-&gt;backend) [[unlikely]] {</div>
 <div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span>                    ::std::terminate();</div>
 <div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span>                }</div>
 <div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span>                const ::std::size_t s = is_parallel_policy ? proxy-&gt;shape : 1uz;</div>
