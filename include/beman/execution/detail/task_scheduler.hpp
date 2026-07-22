@@ -41,6 +41,7 @@ import beman.execution.detail.prop;
 import beman.execution.detail.query_with_default;
 import beman.execution.detail.receiver;
 import beman.execution.detail.schedule;
+import beman.execution.detail.schedule_result_t;
 import beman.execution.detail.scheduler;
 import beman.execution.detail.scheduler_tag;
 import beman.execution.detail.sender;
@@ -78,6 +79,7 @@ import beman.execution.detail.unstoppable_token;
 #include <beman/execution/detail/query_with_default.hpp>
 #include <beman/execution/detail/receiver.hpp>
 #include <beman/execution/detail/schedule.hpp>
+#include <beman/execution/detail/schedule_result_t.hpp>
 #include <beman/execution/detail/scheduler.hpp>
 #include <beman/execution/detail/scheduler_tag.hpp>
 #include <beman/execution/detail/sender.hpp>
@@ -215,7 +217,7 @@ struct task_scheduler_backend_sched : task_scheduler_backend {
     }
 
     auto do_equals(const task_scheduler_backend& other) const noexcept -> bool override {
-        if (auto o = dynamic_cast<task_scheduler_backend_sched*>(&other)) {
+        if (auto o = dynamic_cast<const task_scheduler_backend_sched*>(&other)) {
             return o->sched == sched;
         }
         return false;
@@ -228,8 +230,6 @@ template <typename Sched, typename Alloc>
 struct task_scheduler_backend_for : task_scheduler_backend_sched<Sched> {
     using base = task_scheduler_backend_sched<Sched>;
     using typename base::just_sndr_like;
-    using inlined_holder   = base::template inlined_state_holder<Sched>;
-    using allocated_holder = base::template allocated_state_holder<Sched, Alloc>;
 
     task_scheduler_backend_for(Sched sched, Alloc alloc) noexcept
         : base(::std::move(sched)), alloc(::std::move(alloc)) {}
@@ -281,6 +281,8 @@ struct task_scheduler_backend_for : task_scheduler_backend_sched<Sched> {
                          Sndr                                                                sndr,
                          ::beman::execution::parallel_scheduler_replacement::receiver_proxy& proxy) const noexcept
         -> void {
+        using inlined_holder   = typename base::template inlined_state_holder<Sndr>;
+        using allocated_holder = typename base::template allocated_state_holder<Sndr, Alloc>;
         constexpr bool inlined =
             sizeof(inlined_holder) <= psched_storage_size && alignof(inlined_holder) <= psched_storage_alignment;
         try {
@@ -364,7 +366,7 @@ class task_scheduler {
     template <typename Sched>
         requires(!::std::same_as<Sched, task_scheduler>) && ::beman::execution::scheduler<Sched>
     auto operator==(const Sched& other) const noexcept -> bool {
-        auto b = dynamic_cast<::beman::execution::detail::task_scheduler_backend_sched<Sched>*>(backend_.get());
+        auto b = dynamic_cast<const ::beman::execution::detail::task_scheduler_backend_sched<Sched>*>(backend_.get());
         return b && b->sched == other;
     }
 
@@ -483,6 +485,11 @@ class task_scheduler::sender {
 inline auto task_scheduler::schedule() const noexcept -> sender { return sender{this->backend_}; }
 
 } // namespace beman::execution
+
+#ifndef BEMAN_HAS_MODULES
+template <typename Alloc>
+struct ::std::uses_allocator<::beman::execution::task_scheduler, Alloc> : ::std::true_type {};
+#endif
 
 // ----------------------------------------------------------------------------
 

@@ -135,6 +135,7 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/meta_contain_same.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/meta_contains.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/meta_filter.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/meta_index.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/meta_prepend.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/meta_size.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/meta_to.hpp
@@ -196,7 +197,6 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/spawn_get_allocator.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/start.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/starts_on.hpp
-                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/state_rep.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/state_type.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stop_callback_for_t.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/stop_propagator.hpp
@@ -359,6 +359,7 @@ if(BEMAN_USE_MODULES)
                     meta_contains.cppm
                     meta_contain_same.cppm
                     meta_filter.cppm
+                    meta_index.cppm
                     meta_prepend.cppm
                     meta_size.cppm
                     meta_to.cppm
@@ -431,6 +432,7 @@ if(BEMAN_USE_MODULES)
                     stopped_as_error.cppm
                     stopped_as_optional.cppm
                     store_receiver.cppm
+                    sub_visit.cppm
                     suspend_complete.cppm
                     sync_wait.cppm
                     sync_wait_with_variant.cppm
