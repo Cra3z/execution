@@ -48,6 +48,7 @@ import beman.execution.detail.sender;
 import beman.execution.detail.set_error;
 import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
+import beman.execution.detail.simple_allocator;
 import beman.execution.detail.start;
 import beman.execution.detail.stop_propagator;
 import beman.execution.detail.stop_token_of_t;
@@ -87,6 +88,7 @@ import beman.execution.detail.unstoppable_token;
 #include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/start.hpp>
+#include <beman/execution/detail/simple_allocator.hpp>
 #include <beman/execution/detail/stop_propagator.hpp>
 #include <beman/execution/detail/stop_token_of_t.hpp>
 #include <beman/execution/detail/tag_of_t.hpp>
@@ -107,18 +109,21 @@ struct task_scheduler_backend : ::beman::execution::parallel_scheduler_replaceme
         using receiver_concept = ::beman::execution::receiver_tag;
 
         auto set_value() noexcept -> void {
+            auto& proxy_ref = proxy;
             holder.destroy();
-            proxy.set_value();
+            proxy_ref.set_value();
         }
 
         auto set_error(::std::exception_ptr error) noexcept -> void {
+            auto& proxy_ref = proxy;
             holder.destroy();
-            proxy.set_error(::std::move(error));
+            proxy_ref.set_error(::std::move(error));
         }
 
         auto set_stopped() noexcept -> void {
+            auto& proxy_ref = proxy;
             holder.destroy();
-            proxy.set_stopped();
+            proxy_ref.set_stopped();
         }
 
         auto get_env() const noexcept {
@@ -336,12 +341,16 @@ class task_scheduler {
         }
     };
 
-    template <::beman::execution::detail::infallible_scheduler<::beman::execution::env<>> Sched,
-              class Alloc = ::std::allocator<void>>
-        requires(!::std::same_as<task_scheduler, ::std::remove_cvref_t<Sched>>)
+    template <typename Sched, ::beman::execution::detail::simple_allocator Alloc = ::std::allocator<::std::byte>>
+        requires(!::std::same_as<task_scheduler, ::std::remove_cvref_t<Sched>>) &&
+                ::beman::execution::detail::infallible_scheduler<Sched, ::beman::execution::env<>>
     explicit task_scheduler(Sched&& sched, Alloc alloc = {})
-        : backend_(::std::allocate_shared<::beman::execution::detail::task_scheduler_backend_for<Sched, Alloc>>(
+        : backend_(::std::allocate_shared<
+                   ::beman::execution::detail::task_scheduler_backend_for<::std::remove_cvref_t<Sched>, Alloc>>(
               alloc, ::std::forward<Sched>(sched), ::std::move(alloc))) {}
+
+    template <::beman::execution::detail::simple_allocator Alloc>
+    explicit task_scheduler(task_scheduler sched, const Alloc&) noexcept : task_scheduler(::std::move(sched)) {}
 
     auto schedule() const noexcept -> sender;
 
@@ -467,12 +476,6 @@ class task_scheduler::sender {
     auto get_env() const noexcept -> env { return env{this->backend_}; }
 
     template <::beman::execution::receiver Rcvr>
-    auto connect(Rcvr&& rcvr) & noexcept(::std::is_nothrow_constructible_v<::std::remove_cvref_t<Rcvr>, Rcvr>)
-        -> state<Rcvr> {
-        return state<Rcvr>{this->backend_, ::std::forward<Rcvr>(rcvr)};
-    }
-
-    template <::beman::execution::receiver Rcvr>
     auto connect(Rcvr&& rcvr) && noexcept(::std::is_nothrow_constructible_v<::std::remove_cvref_t<Rcvr>, Rcvr>)
         -> state<Rcvr> {
         return state<Rcvr>{::std::move(this->backend_), ::std::forward<Rcvr>(rcvr)};
@@ -488,7 +491,7 @@ inline auto task_scheduler::schedule() const noexcept -> sender { return sender{
 
 #ifndef BEMAN_HAS_MODULES
 template <typename Alloc>
-struct ::std::uses_allocator<::beman::execution::task_scheduler, Alloc> : ::std::true_type {};
+struct std::uses_allocator<::beman::execution::task_scheduler, Alloc> : ::std::true_type {};
 #endif
 
 // ----------------------------------------------------------------------------
