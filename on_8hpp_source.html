@@ -179,7 +179,7 @@ $(document).ready(function(){initNavTree('on_8hpp_source.html',''); initResizabl
 <div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>        <span class="keywordflow">if</span> <span class="keyword">constexpr</span> (::beman::execution::scheduler&lt;<span class="keyword">decltype</span>(data)&gt;) {</div>
 <div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>            return ::std::bool_constant&lt;::std::invocable&lt;::beman::execution::get_start_scheduler_t, Env&gt;&gt;{};</div>
 <div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>        } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>            ::std::bool_constant&lt;</div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>            return ::std::bool_constant&lt;</div>
 <div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>                ::std::invocable&lt;::beman::execution::get_completion_scheduler_t&lt;::beman::execution::set_value_t&gt;,</div>
 <div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>                                 <a class="code hl_typedef" href="namespacebeman_1_1execution.html#adbf95c8f3480ba2c1d78b8c612a9f2f7">::beman::execution::env_of_t</a>&lt;<span class="keyword">decltype</span>(child)&gt;,</div>
 <div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>                                 Env&gt;&gt;{};</div>
