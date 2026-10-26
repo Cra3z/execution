@@ -66,6 +66,7 @@ import beman.execution.detail.start;
 #include <beman/execution/detail/connect.hpp>
 #include <beman/execution/detail/decayed_tuple.hpp>
 #include <beman/execution/detail/default_impls.hpp>
+#include <beman/execution/detail/dependent_sender.hpp>
 #include <beman/execution/detail/env.hpp>
 #include <beman/execution/detail/env_of_t.hpp>
 #include <beman/execution/detail/error_types_of_t.hpp>
@@ -76,6 +77,7 @@ import beman.execution.detail.start;
 #include <beman/execution/detail/get_env.hpp>
 #include <beman/execution/detail/hide_sched.hpp>
 #include <beman/execution/detail/impls_for.hpp>
+#include <beman/execution/detail/infallible_scheduler.hpp>
 #include <beman/execution/detail/is_completion_query.hpp>
 #include <beman/execution/detail/join_env.hpp>
 #include <beman/execution/detail/make_sender.hpp>
@@ -93,6 +95,7 @@ import beman.execution.detail.start;
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor.hpp>
 #include <beman/execution/detail/sender_in.hpp>
+#include <beman/execution/detail/sends_stopped.hpp>
 #include <beman/execution/detail/set_error.hpp>
 #include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
@@ -197,20 +200,57 @@ struct continues_on_t {
                                                         ::beman::execution::detail::hide_sched(env));
         }
 
-        template <typename Tag, typename... Env>
+        template <typename... Env>
             requires requires(const attrs& self, const Scheduler& scheduler, const Env&... env) {
-                ::beman::execution::get_completion_scheduler<Tag>(scheduler, self.template wrap_env<Tag>(env)...);
+                ::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>(
+                    scheduler, self.template wrap_env<::beman::execution::set_value_t>(env)...);
             }
-        auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept {
-            return ::beman::execution::get_completion_scheduler<Tag>(this->sch, this->template wrap_env<Tag>(env)...);
+        auto query(::beman::execution::get_completion_scheduler_t<::beman::execution::set_value_t>,
+                   const Env&... env) const noexcept {
+            return ::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>(
+                this->sch, this->template wrap_env<::beman::execution::set_value_t>(env)...);
         }
 
-        template <typename Tag, typename... Env>
-            requires requires(const attrs& self, const Scheduler& scheduler, const Env&... env) {
-                ::beman::execution::get_completion_domain<Tag>(scheduler, self.template wrap_env<Tag>(env)...);
-            }
-        auto query(::beman::execution::get_completion_domain_t<Tag>, const Env&... env) const noexcept {
-            return ::beman::execution::get_completion_domain<Tag>(this->sch, this->template wrap_env<Tag>(env)...);
+        template <typename Env>
+            requires ::beman::execution::detail::infallible_scheduler<Scheduler, Env> &&
+                     requires(const attrs& self, const Scheduler& scheduler, const Env& env) {
+                         ::beman::execution::get_completion_scheduler<::beman::execution::set_error_t>(
+                             scheduler, self.template wrap_env<::beman::execution::set_error_t>(env));
+                     }
+        auto query(::beman::execution::get_completion_scheduler_t<::beman::execution::set_error_t>,
+                   const Env& env) const noexcept {
+            return ::beman::execution::get_completion_scheduler<::beman::execution::set_error_t>(
+                this->sch, this->template wrap_env<::beman::execution::set_error_t>(env));
+        }
+
+        auto query(::beman::execution::get_completion_scheduler_t<::beman::execution::set_error_t>) const noexcept
+            requires(!::beman::execution::dependent_sender<::beman::execution::schedule_result_t<Scheduler>>) &&
+                    ::beman::execution::detail::infallible_scheduler<Scheduler, ::beman::execution::env<>> &&
+                    ::std::invocable<::beman::execution::get_completion_scheduler_t<::beman::execution::set_error_t>,
+                                     Scheduler>
+        {
+            return ::beman::execution::get_completion_scheduler<::beman::execution::set_error_t>(this->sch);
+        }
+
+        template <typename Env>
+            requires ::beman::execution::sends_stopped<Scheduler, Env> &&
+                     requires(const attrs& self, const Scheduler& scheduler, const Env& env) {
+                         ::beman::execution::get_completion_scheduler<::beman::execution::set_stopped_t>(
+                             scheduler, self.template wrap_env<::beman::execution::set_stopped_t>(env));
+                     }
+        auto query(::beman::execution::get_completion_scheduler_t<::beman::execution::set_stopped_t>,
+                   const Env& env) const noexcept {
+            return ::beman::execution::get_completion_scheduler<::beman::execution::set_stopped_t>(
+                this->sch, this->template wrap_env<::beman::execution::set_stopped_t>(env));
+        }
+
+        auto query(::beman::execution::get_completion_scheduler_t<::beman::execution::set_stopped_t>) const noexcept
+            requires(!::beman::execution::dependent_sender<::beman::execution::schedule_result_t<Scheduler>>) &&
+                    ::beman::execution::sends_stopped<Scheduler> &&
+                    ::std::invocable<::beman::execution::get_completion_scheduler_t<::beman::execution::set_stopped_t>,
+                                     Scheduler>
+        {
+            return ::beman::execution::get_completion_scheduler<::beman::execution::set_stopped_t>(this->sch);
         }
 
         // TODO: query get_completion_domain<>

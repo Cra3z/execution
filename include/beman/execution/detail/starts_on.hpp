@@ -117,15 +117,11 @@ struct starts_on_t {
         }
 
         template <typename Tag, typename... Env>
-        auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept {
-            if constexpr (requires {
-                              ::beman::execution::get_completion_scheduler<Tag>(this->child_attrs,
-                                                                                this->wrap_env(env)...);
-                          }) {
-                return ::beman::execution::get_completion_scheduler<Tag>(this->child_attrs, this->wrap_env(env)...);
-            } else {
-                return this->sch;
+            requires requires(const attrs& self, const ChildAttrs& child_attrs, const Env&... env) {
+                ::beman::execution::get_completion_scheduler<Tag>(child_attrs, self.wrap_env(env)...);
             }
+        auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept {
+            return ::beman::execution::get_completion_scheduler<Tag>(this->child_attrs, this->wrap_env(env)...);
         }
 
         template <typename Tag, typename... Env>
