@@ -6,20 +6,10 @@
 #ifdef BEMAN_HAS_IMPORT_STD
 import std;
 #else
-#include <atomic>
 #include <concepts>
-#include <condition_variable>
 #include <cstddef>
 #include <exception>
 #include <memory>
-#include <mutex>
-#include <numeric>
-#include <optional>
-#include <queue>
-#include <span>
-#include <stdexcept>
-#include <string>
-#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>

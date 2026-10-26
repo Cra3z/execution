@@ -37,6 +37,7 @@ import beman.execution.detail.get_completion_signatures;
 import beman.execution.detail.get_env;
 import beman.execution.detail.hide_sched;
 import beman.execution.detail.impls_for;
+import beman.execution.detail.is_completion_query;
 import beman.execution.detail.join_env;
 import beman.execution.detail.make_sender;
 import beman.execution.detail.meta.combine;
@@ -75,6 +76,7 @@ import beman.execution.detail.start;
 #include <beman/execution/detail/get_env.hpp>
 #include <beman/execution/detail/hide_sched.hpp>
 #include <beman/execution/detail/impls_for.hpp>
+#include <beman/execution/detail/is_completion_query.hpp>
 #include <beman/execution/detail/join_env.hpp>
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/meta_combine.hpp>
@@ -132,6 +134,31 @@ struct continues_on_t {
     template <typename Tag>
     using is_not_set_value = ::std::negation<::beman::execution::detail::is_set_value<Tag>>;
 
+    template <typename>
+    struct is_nothrow_decay_copy_sig;
+
+    template <typename Tag, typename... Args>
+    struct is_nothrow_decay_copy_sig<Tag(Args...)>
+        : ::std::conjunction<::std::is_nothrow_constructible<::std::decay_t<Args>, Args>...> {};
+
+    template <typename>
+    struct is_nothrow_decay_copy_compl_sigs;
+
+    template <typename... Sigs>
+    struct is_nothrow_decay_copy_compl_sigs<::beman::execution::completion_signatures<Sigs...>>
+        : ::std::conjunction<is_nothrow_decay_copy_sig<Sigs>...> {};
+
+    template <typename>
+    struct decay_sig;
+
+    template <typename Tag, typename... Args>
+    struct decay_sig<Tag(Args...)> {
+        using type = Tag(::std::decay_t<Args>...);
+    };
+
+    template <typename T>
+    using decay_sig_t = typename decay_sig<T>::type;
+
     template <typename, typename...>
     struct get_signatures;
     template <typename Sender>
@@ -140,19 +167,22 @@ struct continues_on_t {
     struct get_signatures<
         ::beman::execution::detail::basic_sender<::beman::execution::detail::continues_on_t, Scheduler, Sender>,
         Env> {
-        using exception_signature = ::std::conditional_t<
-            ::std::is_nothrow_move_constructible_v<variant_type<Sender, Env>>,
-            ::beman::execution::completion_signatures<>,
-            ::beman::execution::completion_signatures<::beman::execution::set_error_t(::std::exception_ptr)>>;
 
         static consteval auto get() {
             [[maybe_unused]] auto child_sigs = ::beman::execution::get_completion_signatures<Sender, Env>();
             [[maybe_unused]] auto sched_sigs =
                 ::beman::execution::get_completion_signatures<::beman::execution::schedule_result_t<Scheduler>, Env>();
-            using child_sigs_t = decltype(child_sigs);
-            using extra_sigs_t = ::beman::execution::detail::meta::filter<is_not_set_value, decltype(sched_sigs)>;
-            using type         = ::beman::execution::detail::meta::unique<
-                ::beman::execution::detail::meta::combine<child_sigs_t, exception_signature, extra_sigs_t>>;
+            using child_sigs_t     = decltype(child_sigs);
+            using extra_sigs_t     = ::beman::execution::detail::meta::filter<is_not_set_value, decltype(sched_sigs)>;
+            using error_completion = ::std::conditional_t<
+                is_nothrow_decay_copy_compl_sigs<child_sigs_t>::value&& ::std::is_nothrow_move_constructible_v<
+                    variant_type<Sender, Env>>,
+                ::beman::execution::completion_signatures<>,
+                ::beman::execution::completion_signatures<::beman::execution::set_error_t(::std::exception_ptr)>>;
+            using type = ::beman::execution::detail::meta::unique<::beman::execution::detail::meta::combine<
+                ::beman::execution::detail::meta::transform<decay_sig_t, child_sigs_t>,
+                error_completion,
+                extra_sigs_t>>;
             return type{};
         }
     };
@@ -160,16 +190,11 @@ struct continues_on_t {
     template <typename Scheduler, typename ChildAttrs>
     struct attrs {
         template <typename Tag, typename Env>
+            requires ::std::invocable<::beman::execution::get_completion_scheduler_t<Tag>, ChildAttrs, Env>
         auto wrap_env(const Env& env) const noexcept {
-            using tag_t = ::std::conditional_t<::std::same_as<Tag, void>, ::beman::execution::set_value_t, Tag>;
-            if constexpr (requires { ::beman::execution::get_completion_scheduler<tag_t>(this->child_attrs, env); }) {
-                auto compl_sch = ::beman::execution::get_completion_scheduler<tag_t>(this->child_attrs, env);
-                return ::beman::execution::detail::join_env(
-                    ::beman::execution::detail::sched_env(::std::move(compl_sch)),
-                    ::beman::execution::detail::hide_sched(env));
-            } else {
-                return ::beman::execution::detail::fwd_env(env);
-            }
+            auto compl_sch = ::beman::execution::get_completion_scheduler<Tag>(this->child_attrs, env);
+            return ::beman::execution::detail::join_env(::beman::execution::detail::sched_env(::std::move(compl_sch)),
+                                                        ::beman::execution::detail::hide_sched(env));
         }
 
         template <typename Tag, typename... Env>
@@ -188,12 +213,19 @@ struct continues_on_t {
             return ::beman::execution::get_completion_domain<Tag>(this->sch, this->template wrap_env<Tag>(env)...);
         }
 
-        template <typename Q, typename... Args>
-            requires requires(const ChildAttrs& child_attrs, Q q, Args&&... args) {
-                child_attrs.query(q, ::std::forward<Args>(args)...);
-            }
-        auto query(Q q, Args&&... args) const noexcept {
-            return this->child_attrs.query(q, ::std::forward<Args>(args)...);
+        // TODO: query get_completion_domain<>
+        // template <typename... Env>
+        // auto query(::beman::execution::get_completion_domain_t<>, const Env&... env) const noexcept {
+        //     return ::beman::execution::get_completion_domain<>(this->sch, this->template wrap_env<Tag>(env)...);
+        // }
+
+        template <typename Query, typename... Args>
+            requires(!::beman::execution::detail::is_completion_query<Query>::value) &&
+                    requires(const Query& q, const ChildAttrs& child_attrs, Args&&... args) {
+                        q(::beman::execution::detail::fwd_env(child_attrs), ::std::forward<Args>(args)...);
+                    }
+        auto query(Query q, Args&&... args) const noexcept {
+            return q(::beman::execution::detail::fwd_env(this->child_attrs), ::std::forward<Args>(args)...);
         }
 
         Scheduler  sch;
@@ -296,20 +328,18 @@ struct continues_on_t {
             template <typename Tag, typename... Args>
             auto operator()(auto, auto& state, auto& receiver, Tag, Args&&... args) const noexcept -> void {
                 using result_t         = ::beman::execution::detail::decayed_tuple<Tag, Args...>;
-                constexpr bool nothrow = ::std::is_nothrow_move_constructible_v<decltype(state.async_result)>;
+                constexpr bool nothrow = (::std::is_nothrow_constructible_v<::std::decay_t<Args>, Args> && ...);
 
                 try {
                     [&]() noexcept(nothrow) {
-                        state.async_result.template emplace<result_t>(Tag(), std::forward<Args>(args)...);
+                        state.async_result.template emplace<result_t>(Tag(), ::std::forward<Args>(args)...);
                     }();
                 } catch (...) {
                     if constexpr (!nothrow) {
-                        ::beman::execution::set_error(::std::move(receiver), ::std::current_exception());
+                        state.async_result.template emplace<::std::tuple<::beman::execution::set_error_t,
+                                                                  ::std::exception_ptr>>(::beman::execution::set_error, ::std::current_exception());
                     }
                 }
-
-                if (state.async_result.index() == 0)
-                    return;
 
                 ::beman::execution::start(state.op_state);
             }

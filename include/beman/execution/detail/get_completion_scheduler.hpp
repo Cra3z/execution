@@ -48,11 +48,14 @@ concept compl_sched_recurse_queryable = requires {
     } -> ::beman::execution::scheduler;
 };
 
+template <typename Q, typename... E>
+concept compl_sched_is_itself = ::beman::execution::scheduler<Q> && sizeof...(E) == 1uz;
+
 template <::beman::execution::detail::completion_tag Tag>
 struct get_completion_scheduler_t : ::beman::execution::forwarding_query_t {
     template <typename Q, typename... E>
         requires ::beman::execution::detail::compl_sched_recurse_queryable<Tag, Q, E...> ||
-                 ::beman::execution::scheduler<Q>
+                 ::beman::execution::detail::compl_sched_is_itself<Q, E...>
     auto operator()(const Q& q, const E&... e) const noexcept;
 };
 
@@ -77,14 +80,14 @@ auto recurse_query(Scheduler sch, const Envs&... envs) noexcept {
 template <::beman::execution::detail::completion_tag Tag>
 template <typename Q, typename... E>
     requires ::beman::execution::detail::compl_sched_recurse_queryable<Tag, Q, E...> ||
-             ::beman::execution::scheduler<Q>
+             ::beman::execution::detail::compl_sched_is_itself<Q, E...>
 auto get_completion_scheduler_t<Tag>::operator()(const Q& q, const E&... e) const noexcept {
     if constexpr (::beman::execution::detail::compl_sched_recurse_queryable<Tag, Q, E...>) {
         static_assert(noexcept(
             ::beman::execution::detail::recurse_query(::beman::execution::detail::try_query(q, *this, e...), e...)));
         return ::beman::execution::detail::recurse_query(::beman::execution::detail::try_query(q, *this, e...), e...);
     } else {
-        static_assert(::beman::execution::scheduler<Q>);
+        static_assert(::beman::execution::detail::compl_sched_is_itself<Q, E...>);
         return q;
     }
 }

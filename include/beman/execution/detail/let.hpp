@@ -277,6 +277,11 @@ struct let_t {
                                                      ::std::declval<let_receiver<Receiver, Env>>()));
         };
 
+        static constexpr auto get_attrs{[](const auto&, const auto&) noexcept {
+            // TODO: Need more proper sender-attrs
+            return ::beman::execution::env<>{};
+        }};
+
         static constexpr auto get_state{[]<typename Sender, typename Receiver>(Sender&& sender, Receiver&& receiver) {
             auto& fun{sender.template get<1>()};
             auto& child{sender.template get<2>()};

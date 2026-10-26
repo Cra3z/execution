@@ -131,6 +131,11 @@ class run_loop {
             -> ::beman::execution::forward_progress_guarantee {
             return ::beman::execution::forward_progress_guarantee::parallel;
         }
+
+        auto query(::beman::execution::get_completion_scheduler_t<::beman::execution::set_value_t>) const noexcept
+            -> scheduler {
+            return *this;
+        }
     };
 
     enum class state : unsigned char { starting, running, finishing };
