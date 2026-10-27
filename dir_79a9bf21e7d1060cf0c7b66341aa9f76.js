@@ -102,6 +102,7 @@ var dir_79a9bf21e7d1060cf0c7b66341aa9f76 =
     [ "intrusive_stack.hpp", "intrusive__stack_8hpp_source.html", null ],
     [ "is_awaitable.hpp", "is__awaitable_8hpp_source.html", null ],
     [ "is_awaiter.hpp", "is__awaiter_8hpp_source.html", null ],
+    [ "is_completion_query.hpp", "is__completion__query_8hpp_source.html", null ],
     [ "is_constant.hpp", "is__constant_8hpp_source.html", null ],
     [ "join_env.hpp", "join__env_8hpp_source.html", null ],
     [ "just.hpp", "just_8hpp_source.html", null ],
