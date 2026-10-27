@@ -7,9 +7,11 @@
 import std;
 #else
 #include <concepts>
+#include <coroutine>
 #include <cstddef>
 #include <exception>
 #include <memory>
+#include <numeric>
 #include <type_traits>
 #include <utility>
 #include <vector>

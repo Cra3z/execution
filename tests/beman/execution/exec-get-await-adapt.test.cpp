@@ -7,6 +7,7 @@
 import std;
 #else
 #include <concepts>
+#include <coroutine>
 #include <utility>
 #endif
 #ifdef BEMAN_HAS_MODULES

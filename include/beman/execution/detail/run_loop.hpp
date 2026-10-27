@@ -137,8 +137,7 @@ class run_loop {
         template <typename Completion>
             requires ::std::same_as<Completion, ::beman::execution::set_value_t> ||
                      ::std::same_as<Completion, ::beman::execution::set_stopped_t>
-        auto query(::beman::execution::get_completion_scheduler_t<::beman::execution::set_value_t>) const noexcept
-            -> scheduler {
+        auto query(::beman::execution::get_completion_scheduler_t<Completion>) const noexcept -> scheduler {
             return *this;
         }
     };
