@@ -212,7 +212,7 @@ $(document).ready(function(){initNavTree('affine_8hpp_source.html',''); initResi
 <div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>                             ::beman::execution::get_start_scheduler(::std::declval&lt;Env&gt;()),</div>
 <div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>                             ::beman::execution::detail::hide_sched(::std::declval&lt;Env&gt;()));</div>
 <div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>                     }</div>
-<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>        <span class="keyword">static</span> <span class="keyword">auto</span> query(::beman::execution::get_completion_scheduler_t&lt;Tag&gt;, <span class="keyword">const</span> Env&amp; env) <span class="keyword">noexcept</span> {</div>
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>        <span class="keyword">auto</span> query(::beman::execution::get_completion_scheduler_t&lt;Tag&gt;, <span class="keyword">const</span> Env&amp; env) <span class="keyword">const</span> <span class="keyword">noexcept</span> {</div>
 <div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>            <span class="keyword">auto</span> sch = ::beman::execution::get_start_scheduler(env);</div>
 <div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>            return ::beman::execution::get_completion_scheduler&lt;::beman::execution::set_value_t&gt;(</div>
 <div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>                sch, ::beman::execution::detail::hide_sched(env));</div>
@@ -228,7 +228,7 @@ $(document).ready(function(){initNavTree('affine_8hpp_source.html',''); initResi
 <div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>                             ::beman::execution::get_start_scheduler(::std::declval&lt;Env&gt;()),</div>
 <div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>                             ::beman::execution::detail::hide_sched(::std::declval&lt;Env&gt;()));</div>
 <div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>                     }</div>
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>        <span class="keyword">static</span> <span class="keyword">auto</span> query(::beman::execution::get_completion_domain_t&lt;Tag&gt;, <span class="keyword">const</span> Env&amp; env) <span class="keyword">noexcept</span> {</div>
+<div class="line"><a id="l00167" name="l00167"></a><span class="lineno">  167</span>        <span class="keyword">auto</span> query(::beman::execution::get_completion_domain_t&lt;Tag&gt;, <span class="keyword">const</span> Env&amp; env) <span class="keyword">const</span> <span class="keyword">noexcept</span> {</div>
 <div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>            <span class="keyword">auto</span> sch = ::beman::execution::get_start_scheduler(env);</div>
 <div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>            return ::beman::execution::get_completion_domain&lt;::beman::execution::set_value_t&gt;(</div>
 <div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>                sch, ::beman::execution::detail::hide_sched(env));</div>
