@@ -163,6 +163,7 @@ var dir_79a9bf21e7d1060cf0c7b66341aa9f76 =
     [ "sender_has_affine.hpp", "sender__has__affine_8hpp_source.html", null ],
     [ "sender_in.hpp", "sender__in_8hpp_source.html", null ],
     [ "sender_to.hpp", "sender__to_8hpp_source.html", null ],
+    [ "sends.hpp", "sends_8hpp_source.html", null ],
     [ "sends_stopped.hpp", "sends__stopped_8hpp_source.html", null ],
     [ "set_error.hpp", "set__error_8hpp_source.html", null ],
     [ "set_stopped.hpp", "set__stopped_8hpp_source.html", null ],
