@@ -27,13 +27,13 @@ import beman.execution.detail.type_list;
 // ----------------------------------------------------------------------------
 
 namespace beman::execution::detail {
-template <typename Tag, typename Sender, typename Env>
-    requires ::beman::execution::sender_in<Sender, Env> && ::beman::execution::detail::completion_tag<Tag>
+template <typename Tag, typename Sender, typename... Env>
+    requires ::beman::execution::sender_in<Sender, Env...> && ::beman::execution::detail::completion_tag<Tag>
 inline constexpr bool sends =
     (!::std::same_as<
         ::beman::execution::detail::type_list<>,
         ::beman::execution::detail::gather_signatures<Tag,
-                                                      ::beman::execution::completion_signatures_of_t<Sender, Env>,
+                                                      ::beman::execution::completion_signatures_of_t<Sender, Env...>,
                                                       ::beman::execution::detail::type_list,
                                                       ::beman::execution::detail::type_list>>);
 }

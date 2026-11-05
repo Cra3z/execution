@@ -55,6 +55,7 @@ import beman.execution.detail.sched_env;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.sender_in;
+import beman.execution.detail.sends;
 import beman.execution.detail.set_error;
 import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
@@ -93,6 +94,7 @@ import beman.execution.detail.start;
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor.hpp>
 #include <beman/execution/detail/sender_in.hpp>
+#include <beman/execution/detail/sends.hpp>
 #include <beman/execution/detail/set_error.hpp>
 #include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
@@ -193,42 +195,54 @@ struct continues_on_t {
         }
     };
 
-    template <typename Scheduler, typename ChildAttrs>
-    struct attrs : ::beman::execution::detail::hide_completion_queries<ChildAttrs> {
-        using base = ::beman::execution::detail::hide_completion_queries<ChildAttrs>;
+    template <typename Scheduler, typename Child>
+    struct attrs : ::beman::execution::detail::hide_completion_queries<::beman::execution::env_of_t<Child>> {
+        using base = ::beman::execution::detail::hide_completion_queries<::beman::execution::env_of_t<Child>>;
 
-        attrs(Scheduler sch, ChildAttrs child_attrs) noexcept
+        attrs(Scheduler sch, ::beman::execution::env_of_t<Child> child_attrs) noexcept
             : base(::std::move(child_attrs)), sch(::std::move(sch)) {}
 
         template <typename Tag, typename Env>
         auto wrap_env(const Env& env) const noexcept {
-            using tag_t = ::std::conditional_t<::std::same_as<Tag, void>, ::beman::execution::set_value_t, Tag>;
-            if constexpr (requires { ::beman::execution::get_completion_scheduler<tag_t>(this->child_attrs, env); }) {
-                auto compl_sch = ::beman::execution::get_completion_scheduler<tag_t>(this->child_attrs, env);
-                return ::beman::execution::detail::join_env(
-                    ::beman::execution::detail::sched_env(::std::move(compl_sch)),
-                    ::beman::execution::detail::hide_sched(env));
+            if constexpr (::std::same_as<Tag, ::beman::execution::set_error_t> &&
+                          !is_nothrow_decay_copy_compl_sigs<
+                              ::beman::execution::completion_signatures_of_t<Child, Env>>::value) {
+                return ::beman::execution::detail::hide_sched(env);
             } else {
-                return ::beman::execution::detail::fwd_env(env);
+                if constexpr (requires {
+                                  ::beman::execution::get_completion_scheduler<Tag>(this->child_attrs, env);
+                              }) {
+                    auto compl_sch = ::beman::execution::get_completion_scheduler<Tag>(this->child_attrs, env);
+                    return ::beman::execution::detail::join_env(
+                        ::beman::execution::detail::sched_env(::std::move(compl_sch)),
+                        ::beman::execution::detail::hide_sched(env));
+                } else {
+                    return ::beman::execution::detail::hide_sched(env);
+                }
             }
         }
+
+        template <typename Tag, typename Env, typename Self = attrs>
+        using wrap_env_t = decltype(::std::declval<Self>().template wrap_env<Tag>(::std::declval<Env>()));
 
         using base::query;
 
         template <typename Tag, typename... Env>
-            requires requires(const attrs& self, const Scheduler& scheduler, const Env&... env) {
-                ::beman::execution::get_completion_scheduler<Tag>(scheduler, self.template wrap_env<Tag>(env)...);
-            }
+            requires ::beman::execution::sender_in<Child, Env...> &&
+                     ::beman::execution::sender_in<::beman::execution::schedule_result_t<Scheduler>, Env...> &&
+                     ::beman::execution::detail::sends<Tag, Child, Env...> &&
+                     (::std::same_as<Tag, ::beman::execution::set_value_t> ||
+                      !::beman::execution::detail::
+                          sends<Tag, ::beman::execution::schedule_result_t<Scheduler>, Env...>) &&
+                     ::std::invocable<::beman::execution::get_completion_scheduler_t<::beman::execution::set_value_t>,
+                                      Scheduler,
+                                      wrap_env_t<Tag, Env>...> &&
+                     ::std::invocable<::beman::execution::get_completion_scheduler_t<::beman::execution::set_value_t>,
+                                      ::beman::execution::env_of_t<::beman::execution::schedule_result_t<Scheduler>>,
+                                      wrap_env_t<Tag, Env>...>
         auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept {
-            return ::beman::execution::get_completion_scheduler<Tag>(this->sch, this->template wrap_env<Tag>(env)...);
-        }
-
-        template <typename Tag, typename... Env>
-            requires requires(const attrs& self, const Scheduler& scheduler, const Env&... env) {
-                ::beman::execution::get_completion_domain<Tag>(scheduler, self.template wrap_env<Tag>(env)...);
-            }
-        auto query(::beman::execution::get_completion_domain_t<Tag>, const Env&... env) const noexcept {
-            return ::beman::execution::get_completion_domain<Tag>(this->sch, this->template wrap_env<Tag>(env)...);
+            return ::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>(
+                this->sch, this->template wrap_env<Tag>(env)...);
         }
 
         Scheduler sch;
@@ -243,10 +257,10 @@ struct continues_on_t {
 
     struct impls_for : ::beman::execution::detail::default_impls {
         struct get_attrs_impl {
-            auto operator()(const auto& sch, const auto& child) const noexcept {
-                using Sch        = ::std::remove_cvref_t<decltype(sch)>;
-                using ChildAttrs = ::std::remove_cvref_t<decltype(::beman::execution::get_env(child))>;
-                return attrs<Sch, ChildAttrs>{sch, ::beman::execution::get_env(child)};
+            template <typename Child>
+            auto operator()(const auto& sch, const Child& child) const noexcept {
+                using Sch = ::std::remove_cvref_t<decltype(sch)>;
+                return attrs<Sch, Child>{sch, ::beman::execution::get_env(child)};
             }
         };
         static constexpr auto get_attrs{get_attrs_impl{}};

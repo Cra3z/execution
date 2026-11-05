@@ -11,7 +11,6 @@ import std;
 #ifdef BEMAN_HAS_MODULES
 import beman.execution;
 #else
-#include <beman/execution/detail/continues_on.hpp>
 #include <beman/execution.hpp>
 #endif
 
@@ -24,14 +23,22 @@ struct non_sender {};
 struct custom_domain : test_std::default_domain {};
 
 struct scheduler {
-    auto query(test_std::get_forward_progress_guarantee_t) const noexcept {
+    static auto query(test_std::get_forward_progress_guarantee_t) noexcept {
         return test_std::forward_progress_guarantee::weakly_parallel;
     }
+
+    static auto query(test_std::get_completion_scheduler_t<test_std::set_value_t>) noexcept -> scheduler { return {}; }
+
+    static auto query(test_std::get_completion_domain_t<test_std::set_value_t>) noexcept -> custom_domain {
+        return {};
+    }
+
     struct env {
         auto query(const test_std::get_completion_scheduler_t<test_std::set_value_t>&) const noexcept -> scheduler {
             return {};
         }
     };
+
     struct sender {
         template <typename Receiver>
         struct state {
@@ -39,9 +46,16 @@ struct scheduler {
             std::remove_cvref_t<Receiver> receiver;
             auto start() & noexcept -> void { test_std::set_value(::std::move(this->receiver)); }
         };
-        using sender_concept        = test_std::sender_tag;
-        using completion_signatures = test_std::completion_signatures<test_std::set_value_t()>;
+
+        using sender_concept = test_std::sender_tag;
+
         auto get_env() const noexcept -> env { return {}; }
+
+        template <typename...>
+        static consteval auto get_completion_signatures() noexcept {
+            return test_std::completion_signatures<test_std::set_value_t()>{};
+        }
+
         template <test_std::receiver Receiver>
         auto connect(Receiver&& receiver) -> state<Receiver> {
             return {std::forward<Receiver>(receiver)};
@@ -50,12 +64,9 @@ struct scheduler {
     using scheduler_concept = test_std::scheduler_tag;
     auto schedule() -> sender { return {}; }
     auto operator==(const scheduler&) const -> bool = default;
-
-    auto query(const test_std::get_domain_t&) const noexcept -> custom_domain { return {}; }
 };
 struct sender {
-    using sender_concept        = test_std::sender_tag;
-    using completion_signatures = test_std::completion_signatures<test_std::set_value_t()>;
+    using sender_concept = test_std::sender_tag;
 
     template <typename Receiver>
     struct state {
@@ -63,6 +74,12 @@ struct sender {
         std::remove_cvref_t<Receiver> receiver;
         auto                          start() & noexcept -> void { test_std::set_value(::std::move(this->receiver)); }
     };
+
+    template <typename...>
+    static consteval auto get_completion_signatures() noexcept {
+        return test_std::completion_signatures<test_std::set_value_t()>{};
+    }
+
     template <test_std::receiver Receiver>
     auto connect(Receiver&& receiver) -> state<Receiver> {
         return {std::forward<Receiver>(receiver)};
@@ -80,7 +97,7 @@ auto test_constraints(Scheduler&& scheduler, Sender&& sender) {
     static_assert(Expect == requires { ::std::forward<Sender>(sender) | test_std::continues_on(scheduler); });
 
     if constexpr (Expect) {
-        auto domain{test_std::get_domain(scheduler)};
+        auto domain{test_std::get_completion_domain<>(scheduler)};
         test::check_type<custom_domain&>(domain);
 
         [[maybe_unused]] auto s{
@@ -96,6 +113,7 @@ auto test_use(Scheduler&& scheduler, Sender&& sender) {
     static_assert(
         std::same_as<decltype(test_std::get_completion_scheduler<test_std::set_value_t>(test_std::get_env(s))),
                      std::remove_cvref_t<Scheduler>>);
+    static_assert(std::same_as<decltype(test_std::get_completion_domain<>(test_std::get_env(s))), custom_domain>);
     //-dk:TODO test_std::sync_wait(std::move(s));
 }
 

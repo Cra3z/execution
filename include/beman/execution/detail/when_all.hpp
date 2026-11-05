@@ -33,6 +33,7 @@ import beman.execution.detail.dependent_sender_error;
 import beman.execution.detail.env;
 import beman.execution.detail.env_of_t;
 import beman.execution.detail.error_types_of_t;
+import beman.execution.detail.fwd_env;
 import beman.execution.detail.get_env;
 import beman.execution.detail.get_completion_domain;
 import beman.execution.detail.get_domain;
@@ -76,6 +77,7 @@ import beman.execution.detail.value_types_of_t;
 #include <beman/execution/detail/env.hpp>
 #include <beman/execution/detail/env_of_t.hpp>
 #include <beman/execution/detail/error_types_of_t.hpp>
+#include <beman/execution/detail/fwd_env.hpp>
 #include <beman/execution/detail/get_completion_domain.hpp>
 #include <beman/execution/detail/get_domain.hpp>
 #include <beman/execution/detail/get_stop_token.hpp>
@@ -229,8 +231,12 @@ struct when_all_t {
     struct impls_for : ::beman::execution::detail::default_impls {
         struct get_attrs_impl {
             template <typename... Children>
-            auto operator()(const auto&, const Children&...) const noexcept {
-                return attrs<Children...>{};
+            auto operator()(const auto&, const Children&... children) const noexcept {
+                if constexpr (sizeof...(Children) == 1uz) {
+                    return (::beman::execution::detail::fwd_env(::beman::execution::get_env(children)), ...);
+                } else {
+                    return attrs<Children...>{};
+                }
             }
         };
         static constexpr auto get_attrs{get_attrs_impl{}};
