@@ -12,11 +12,14 @@ import std;
 #include <concepts>
 #include <exception>
 #include <functional>
+#include <type_traits>
 #include <utility>
 #endif
 #ifdef BEMAN_HAS_MODULES
 import beman.execution.detail.basic_sender;
 import beman.execution.detail.call_result_t;
+import beman.execution.detail.common_domain;
+import beman.execution.detail.compl_domain;
 import beman.execution.detail.completion_signatures;
 import beman.execution.detail.completion_signatures_for;
 import beman.execution.detail.completion_signatures_of_t;
@@ -24,8 +27,14 @@ import beman.execution.detail.default_impls;
 import beman.execution.detail.dependent_sender;
 import beman.execution.detail.dependent_sender_error;
 import beman.execution.detail.env;
+import beman.execution.detail.env_of_t;
+import beman.execution.detail.forwarding_query;
 import beman.execution.detail.fwd_env;
 import beman.execution.detail.get_completion_signatures;
+import beman.execution.detail.get_completion_domain;
+import beman.execution.detail.get_completion_scheduler;
+import beman.execution.detail.get_env;
+import beman.execution.detail.hide_completion_queries;
 import beman.execution.detail.impls_for;
 import beman.execution.detail.make_sender;
 import beman.execution.detail.meta.combine;
@@ -40,8 +49,11 @@ import beman.execution.detail.set_error;
 import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
 import beman.execution.detail.transform_sender;
+import beman.execution.detail.type_list;
 #else
 #include <beman/execution/detail/call_result_t.hpp>
+#include <beman/execution/detail/common_domain.hpp>
+#include <beman/execution/detail/compl_domain.hpp>
 #include <beman/execution/detail/completion_signatures.hpp>
 #include <beman/execution/detail/completion_signatures_for.hpp>
 #include <beman/execution/detail/completion_signatures_of_t.hpp>
@@ -49,8 +61,14 @@ import beman.execution.detail.transform_sender;
 #include <beman/execution/detail/dependent_sender.hpp>
 #include <beman/execution/detail/dependent_sender_error.hpp>
 #include <beman/execution/detail/env.hpp>
+#include <beman/execution/detail/env_of_t.hpp>
+#include <beman/execution/detail/forwarding_query.hpp>
 #include <beman/execution/detail/fwd_env.hpp>
 #include <beman/execution/detail/get_completion_signatures.hpp>
+#include <beman/execution/detail/get_completion_domain.hpp>
+#include <beman/execution/detail/get_completion_scheduler.hpp>
+#include <beman/execution/detail/get_env.hpp>
+#include <beman/execution/detail/hide_completion_queries.hpp>
 #include <beman/execution/detail/impls_for.hpp>
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/meta_combine.hpp>
@@ -66,6 +84,7 @@ import beman.execution.detail.transform_sender;
 #include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
 #include <beman/execution/detail/transform_sender.hpp>
+#include <beman/execution/detail/type_list.hpp>
 #endif
 
 // ----------------------------------------------------------------------------
@@ -133,6 +152,91 @@ struct then_t {
     }
 
   private:
+    template <typename Fun, typename Child>
+    struct attrs : ::beman::execution::detail::hide_completion_queries<::beman::execution::env_of_t<Child>> {
+      private:
+        using base = ::beman::execution::detail::hide_completion_queries<::beman::execution::env_of_t<Child>>;
+
+        template <typename Tag, typename Source, typename... Env>
+        static consteval bool has_source() {
+            if constexpr (::std::same_as<Source, Completion> ? (::std::same_as<Tag, ::beman::execution::set_value_t> ||
+                                                                ::std::same_as<Tag, ::beman::execution::set_error_t>)
+                                                             : ::std::same_as<Tag, Source>) {
+                if constexpr (::beman::execution::sender_in<Child, ::beman::execution::detail::fwd_env_t<Env>...>) {
+                    bool result{};
+                    ::beman::execution::get_completion_signatures<Child,
+                                                                  ::beman::execution::detail::fwd_env_t<Env>...>()
+                        .for_each([&]<typename SigTag, typename... Args>(SigTag (*)(Args...)) {
+                            if constexpr (::std::same_as<SigTag, Source>) {
+                                if constexpr (!::std::same_as<Source, Completion> ||
+                                              ::std::same_as<Tag, ::beman::execution::set_value_t>)
+                                    result = true;
+                                else
+                                    result = result || !::std::is_nothrow_invocable_v<Fun, Args...>;
+                            }
+                        });
+                    return result;
+                } else {
+                    // A dependent child may use any channel. Only upon_stopped's
+                    // nullary callback can be checked without its signatures.
+                    if constexpr (!::std::same_as<Source, Completion> ||
+                                  ::std::same_as<Tag, ::beman::execution::set_value_t> ||
+                                  !::std::same_as<Completion, ::beman::execution::set_stopped_t>)
+                        return true;
+                    else
+                        return !::std::is_nothrow_invocable_v<Fun>;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        template <typename Tag, typename Source, typename... Env>
+        using source_list = ::std::conditional_t<has_source<Tag, Source, Env...>(),
+                                                 ::beman::execution::detail::type_list<Source>,
+                                                 ::beman::execution::detail::type_list<>>;
+
+        template <typename Tag, typename... Env>
+        using sources =
+            ::beman::execution::detail::meta::combine<source_list<Tag, ::beman::execution::set_value_t, Env...>,
+                                                      source_list<Tag, ::beman::execution::set_error_t, Env...>,
+                                                      source_list<Tag, ::beman::execution::set_stopped_t, Env...>>;
+
+        template <typename Source, typename... Env>
+        auto scheduler(::beman::execution::detail::type_list<Source>, const Env&... env) const noexcept
+            -> decltype(::beman::execution::get_completion_scheduler<Source>(
+                ::beman::execution::get_env(::std::declval<const Child&>()),
+                ::beman::execution::detail::fwd_env(env)...)) {
+            return ::beman::execution::get_completion_scheduler<Source>(this->child_attrs,
+                                                                        ::beman::execution::detail::fwd_env(env)...);
+        }
+
+        template <typename... Env, typename... Source>
+            requires(sizeof...(Source) != 0)
+        static auto domain(::beman::execution::detail::type_list<Source...>)
+            -> ::beman::execution::detail::common_domain_t<
+                ::beman::execution::detail::
+                    compl_domain_of_t<Source, Child, ::beman::execution::detail::fwd_env_t<Env>...>...>;
+
+      public:
+        using base::query;
+
+        // Distinct channels can carry different instances of the same scheduler
+        // type. A scheduler is known only when there is a single source channel.
+        template <typename Tag, typename... Env>
+        auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept
+            -> decltype(this->scheduler(sources<Tag, Env...>{}, env...)) {
+            return this->scheduler(sources<Tag, Env...>{}, env...);
+        }
+
+        template <typename Tag, typename... Env>
+            requires(!::std::same_as<Tag, void>)
+        auto query(::beman::execution::get_completion_domain_t<Tag>, const Env&...) const noexcept
+            -> decltype(domain<Env...>(sources<Tag, Env...>{})) {
+            return {};
+        }
+    };
+
     template <typename, typename...>
     struct get_signatures;
 
@@ -165,6 +269,14 @@ struct then_t {
     }
 
     struct impls_for : ::beman::execution::detail::default_impls {
+        struct get_attrs_impl {
+            template <typename Fun, typename Child>
+            auto operator()(const Fun&, const Child& child) const noexcept {
+                return attrs<Fun, Child>{::beman::execution::get_env(child)};
+            }
+        };
+        static constexpr auto get_attrs{get_attrs_impl{}};
+
         // NOLINTBEGIN(bugprone-exception-escape)
         struct complete_impl {
             template <typename Tag, typename... Args>

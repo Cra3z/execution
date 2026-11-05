@@ -17,16 +17,7 @@ import std;
 #ifdef BEMAN_HAS_MODULES
 import beman.execution;
 #else
-#include <beman/execution/detail/then.hpp>
-#include <beman/execution/detail/completion_signatures_of_t.hpp>
-#include <beman/execution/detail/connect.hpp>
-#include <beman/execution/detail/forwarding_query.hpp>
-#include <beman/execution/detail/read_env.hpp>
-#include <beman/execution/detail/just.hpp>
-#include <beman/execution/detail/sender.hpp>
-#include <beman/execution/detail/sender_in.hpp>
-#include <beman/execution/detail/start.hpp>
-#include <beman/execution/detail/sync_wait.hpp>
+#include <beman/execution.hpp>
 #endif
 
 // ----------------------------------------------------------------------------
@@ -277,6 +268,24 @@ auto test_then_attributes() {
     test::test_sender_env<false>(84, test::test_non_forwardable_attr{}, s | test_std::upon_error([](auto) {}));
     test::test_sender_env<true>(42, test::test_forwardable_attr{}, s | test_std::upon_stopped([]() {}));
     test::test_sender_env<false>(84, test::test_non_forwardable_attr{}, s | test_std::upon_stopped([]() {}));
+
+    test_std::run_loop loop;
+    test_std::prop env{
+        test_std::get_start_scheduler,
+        loop.get_scheduler()
+    };
+    {
+        auto sndr = test_std::just_error(0) | test_std::upon_error([](int i) noexcept {
+            return i;
+        });
+        auto sch = test_std::get_completion_scheduler<test_std::set_value_t>(test_std::get_env(sndr), env);
+        ASSERT(sch == loop.get_scheduler());
+    }
+    {
+        auto sndr = test_std::just_stopped() | test_std::upon_stopped([]() noexcept {});
+        auto sch = test_std::get_completion_scheduler<test_std::set_value_t>(test_std::get_env(sndr), env);
+        ASSERT(sch == loop.get_scheduler());
+    }
 }
 } // namespace
 

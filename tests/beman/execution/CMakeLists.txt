@@ -76,6 +76,7 @@ list(
     exec-task.test
     exec-task-scheduler.test
     exec-then.test
+    exec-then-attributes.test
     exec-unstoppable.test
     exec-cmplsigs.test
     exec-when-all.test
