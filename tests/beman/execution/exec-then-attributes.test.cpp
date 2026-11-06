@@ -180,6 +180,8 @@ void test_single_sources() {
     check_domain<stop, void>(absent);
     check_scheduler<value, 0>(attribute_sender<channel_attrs<>>{} | test_std::then([] {}));
     check_domain<value, void>(attribute_sender<channel_attrs<>>{} | test_std::then([] {}));
+    // just() has no completion domain without an environment, so neither has then.
+    check_domain<value, void>(test_std::just() | test_std::then([] {}));
 
     auto forwarded =
         attribute_sender<channel_attrs<>, value(), error(int), stop()>{} | test_std::then([]() noexcept {});
@@ -227,9 +229,12 @@ void test_multiple_sources() {
     check_scheduler<value, 0>(no_direct_domain);
     check_domain<value, shared_domain>(no_direct_domain);
 
+    // The set_value domain of the child is unknown: without an environment it may still become
+    // known, so the set_error domain is not reported yet; with one it is indeterminate.
     auto partial = attribute_sender<partial_domain_attrs, value(), error(int)>{} | test_std::then([] {});
+    check_domain<error, void>(partial);
     []<typename... Domains>(test_std::indeterminate_domain<Domains...>) {
-    }(test_std::get_completion_domain<error>(test_std::get_env(partial)));
+    }(test_std::get_completion_domain<error>(test_std::get_env(partial), test_std::env<>{}));
 }
 
 void test_dependent_sources() {

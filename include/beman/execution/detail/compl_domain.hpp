@@ -23,7 +23,19 @@ import beman.execution.detail.get_env;
 // ----------------------------------------------------------------------------
 
 namespace beman::execution::detail {
+/*!
+ * \brief COMPL-DOMAIN(Tag, sndr, envs) from [exec.snd.expos]
+ * \headerfile beman/execution.hpp <beman/execution.hpp>
+ * \internal
+ *
+ * The completion domain of `sndr` for `Tag` if it is known. Otherwise, the domain is unknown: with an
+ * environment that means an `indeterminate_domain`; without one the domain may still become known once
+ * an environment is provided, so the expression is ill-formed.
+ */
 template <typename Tag = void, typename Sndr, typename... Envs>
+    requires(sizeof...(Envs) != 0) || requires(const Sndr& sndr) {
+        ::beman::execution::get_completion_domain<Tag>(::beman::execution::get_env(sndr));
+    }
 constexpr auto compl_domain(const Sndr& sndr, const Envs&... envs) noexcept {
     if constexpr (requires {
                       ::beman::execution::get_completion_domain<Tag>(::beman::execution::get_env(sndr), envs...);

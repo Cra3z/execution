@@ -375,6 +375,10 @@ struct env<has_value_domain> {
     auto query(const test_std::get_completion_domain_t<test_std::set_value_t>&) const noexcept -> domain { return {}; }
 };
 } // namespace completion_domain
+template <typename Tag, typename Sender, typename... Env>
+concept has_compl_domain =
+    requires(const Sender& sndr, const Env&... env) { test_detail::compl_domain<Tag>(sndr, env...); };
+
 auto test_compl_domain() -> void {
     namespace cd = completion_domain;
 
@@ -392,8 +396,8 @@ auto test_compl_domain() -> void {
                                    cd::sender<cd::has_value_domain>(), cd::env<cd::has_value_domain>())),
                                decltype(cd::domain())>);
 
-    static_assert(std::same_as<decltype(test_detail::compl_domain<test_std::set_value_t>(cd::sender<cd::common>())),
-                               decltype(test_std::indeterminate_domain())>);
+    // Without an environment an unknown domain may still become known, so COMPL-DOMAIN is ill-formed.
+    static_assert(not has_compl_domain<test_std::set_value_t, cd::sender<cd::common>>);
     static_assert(std::same_as<decltype(test_detail::compl_domain<test_std::set_value_t>(cd::sender<cd::common>(),
                                                                                          test_std::env<>())),
                                decltype(test_std::indeterminate_domain())>);

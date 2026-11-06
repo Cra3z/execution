@@ -21,8 +21,16 @@ namespace ex = ::beman::execution;
 // ----------------------------------------------------------------------------
 
 int main() {
-    auto [result] = ex::sync_wait(ex::when_all(ex::just(std::string("hello, ")), ex::just(std::string("world"))) |
-                                  ex::then([](const auto& s1, const auto& s2) { return s1 + s2; }))
-                        .value_or(std::tuple(std::string("oops")));
-    std::cout << "result='" << result << "'\n";
+    auto sndr = ex::just_error(0) | ex::upon_error([](int i) noexcept {
+        return i;
+    });
+    auto sch = ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr), ex::prop{
+        ex::get_start_scheduler,
+        ex::get_parallel_scheduler()
+    });
+    auto domain = ex::get_completion_domain<ex::set_value_t>(ex::get_env(sndr), ex::prop{
+        ex::get_start_scheduler,
+        ex::get_parallel_scheduler()
+    });
+    static_assert(std::same_as<decltype(domain), void>);
 }

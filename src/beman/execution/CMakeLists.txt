@@ -56,6 +56,7 @@ target_sources(
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_signatures.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_signatures_for.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_signatures_of_t.hpp
+                ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_sources.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_tag.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/completion_storage.hpp
                 ${PROJECT_SOURCE_DIR}/include/beman/execution/detail/connect.hpp
@@ -290,6 +291,7 @@ if(BEMAN_USE_MODULES)
                     completion_signature.cppm
                     completion_signatures_for.cppm
                     completion_signatures_of_t.cppm
+                    completion_sources.cppm
                     completion_signatures.cppm
                     completion_tag.cppm
                     completion_storage.cppm

@@ -134,6 +134,143 @@ auto test_continues_on_attributes() {
     test::test_sender_env<true>(42, test::test_forwardable_attr{}, test_std::continues_on(s, loop.get_scheduler()));
     test::test_sender_env<true>(42, test::test_forwardable_attr{}, test_std::continues_on(s, loop.get_scheduler()));
 }
+
+struct query_domain {};
+
+// A scheduler whose schedule sender has the given completion signatures, and completion schedulers
+// for set_value_t and set_stopped_t if Attrs is true.
+template <bool Attrs, typename... Sigs>
+struct query_scheduler {
+    using scheduler_concept = test_std::scheduler_tag;
+    int id{};
+
+    struct attrs {
+        int id;
+        template <typename Tag>
+            requires std::same_as<Tag, test_std::set_value_t> || std::same_as<Tag, test_std::set_stopped_t>
+        auto query(test_std::get_completion_scheduler_t<Tag>) const noexcept {
+            return query_scheduler{id};
+        }
+    };
+    struct sender {
+        using sender_concept = test_std::sender_tag;
+        int id;
+        template <typename...>
+        static consteval auto get_completion_signatures() noexcept {
+            return test_std::completion_signatures<Sigs...>{};
+        }
+        auto get_env() const noexcept {
+            if constexpr (Attrs)
+                return attrs{id};
+            else
+                return test_std::env<>{};
+        }
+        template <typename Receiver>
+        struct state {
+            using operation_state_concept = test_std::operation_state_tag;
+            Receiver receiver;
+            auto     start() & noexcept -> void { test_std::set_value(std::move(this->receiver)); }
+        };
+        template <test_std::receiver Receiver>
+        auto connect(Receiver receiver) const noexcept -> state<Receiver> {
+            return {std::move(receiver)};
+        }
+    };
+    auto schedule() const noexcept -> sender { return {id}; }
+
+    template <typename... Env>
+    auto query(test_std::get_completion_domain_t<test_std::set_value_t>, const Env&...) const noexcept
+        -> query_domain {
+        return {};
+    }
+    static auto query(test_std::get_forward_progress_guarantee_t) noexcept {
+        return test_std::forward_progress_guarantee::weakly_parallel;
+    }
+    auto operator==(const query_scheduler&) const -> bool = default;
+};
+
+struct throwing_copy {
+    throwing_copy() = default;
+    throwing_copy(const throwing_copy&) noexcept(false) {}
+    throwing_copy(throwing_copy&&) noexcept(false) {}
+};
+
+template <typename Tag, typename Sender, typename... Env>
+concept has_completion_scheduler = requires(const Sender& sndr, const Env&... env) {
+    test_std::get_completion_scheduler<Tag>(test_std::get_env(sndr), env...);
+};
+
+template <typename Tag, typename Sender, typename... Env>
+concept has_completion_domain = requires(const Sender& sndr, const Env&... env) {
+    test_std::get_completion_domain<Tag>(test_std::get_env(sndr), env...);
+};
+
+template <typename Tag, typename Sender, typename... Env>
+using completion_domain_t = decltype(test_std::get_completion_domain<Tag>(
+    test_std::get_env(std::declval<const Sender&>()), std::declval<const Env&>()...));
+
+auto test_completion_queries() {
+    using value   = test_std::set_value_t;
+    using error   = test_std::set_error_t;
+    using stopped = test_std::set_stopped_t;
+    using env     = test_std::env<>;
+
+    {
+        // All completions happen on sch even if its schedule sender reports no completion scheduler.
+        using sch_t = query_scheduler<false, value()>;
+        auto sndr   = test_std::continues_on(test_std::just(), sch_t{17});
+        ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(sndr), env{}) == sch_t{17});
+        static_assert(std::same_as<completion_domain_t<value, decltype(sndr), env>, query_domain>);
+        static_assert(not has_completion_scheduler<error, decltype(sndr), env>);
+        static_assert(not has_completion_domain<error, decltype(sndr), env>);
+    }
+    {
+        // Errors from decay-copying the child's results are delivered on sch, too.
+        using sch_t = query_scheduler<true, value()>;
+        auto sndr   = test_std::continues_on(test_std::just(throwing_copy{}), sch_t{17});
+        ASSERT(test_std::get_completion_scheduler<error>(test_std::get_env(sndr), env{}) == sch_t{17});
+        static_assert(std::same_as<completion_domain_t<error, decltype(sndr), env>, query_domain>);
+    }
+    {
+        // Stopped completions of schedule(sch) itself: their domain is known, a scheduler is not reported.
+        using sch_t = query_scheduler<true, value(), stopped()>;
+        auto sndr   = test_std::continues_on(test_std::just(), sch_t{});
+        static_assert(has_completion_scheduler<value, decltype(sndr), env>);
+        static_assert(not has_completion_scheduler<stopped, decltype(sndr), env>);
+        static_assert(std::same_as<completion_domain_t<stopped, decltype(sndr), env>, query_domain>);
+
+        auto stopped_sndr = test_std::continues_on(test_std::just_stopped(), sch_t{});
+        static_assert(not has_completion_scheduler<stopped, decltype(stopped_sndr), env>);
+        static_assert(std::same_as<completion_domain_t<stopped, decltype(stopped_sndr), env>, query_domain>);
+        static_assert(not has_completion_domain<value, decltype(stopped_sndr), env>);
+    }
+    {
+        // The run_loop schedule sender may complete with set_stopped unless the environment says otherwise.
+        test_std::run_loop loop;
+        auto               sndr = test_std::continues_on(test_std::just_stopped(), loop.get_scheduler());
+        static_assert(not has_completion_scheduler<stopped, decltype(sndr)>);
+        ASSERT(test_std::get_completion_scheduler<stopped>(test_std::get_env(sndr), env{}) == loop.get_scheduler());
+        static_assert(std::same_as<completion_domain_t<stopped, decltype(sndr), env>, test_std::default_domain>);
+    }
+    {
+        // inline_scheduler completes on the agent of the child completion starting it: the child's
+        // value completions come from two channels with a common domain.
+        using sch_t = query_scheduler<true, value(), stopped()>;
+        auto child  = test_std::schedule(sch_t{}) | test_std::upon_stopped([] {});
+        static_assert(not has_completion_scheduler<value, decltype(child), env>);
+        auto sndr = test_std::continues_on(child, test_std::inline_scheduler{});
+        static_assert(std::same_as<completion_domain_t<value, decltype(sndr), env>, query_domain>);
+    }
+    {
+        // With inline_scheduler, decay-copy errors happen on the agent of the child's value completion.
+        test_std::run_loop loop;
+        auto               child =
+            test_std::schedule(loop.get_scheduler()) | test_std::then([]() noexcept { return throwing_copy{}; });
+        auto sndr = test_std::continues_on(child, test_std::inline_scheduler{});
+        ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(sndr), env{}) == loop.get_scheduler());
+        ASSERT(test_std::get_completion_scheduler<error>(test_std::get_env(sndr), env{}) == loop.get_scheduler());
+    }
+}
 } // namespace
 
 TEST(exec_continues_on) {
@@ -151,4 +288,5 @@ TEST(exec_continues_on) {
     test_use(scheduler{}, sender{});
     test_inline_scheduler();
     test_continues_on_attributes();
+    test_completion_queries();
 }

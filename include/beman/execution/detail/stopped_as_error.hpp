@@ -9,11 +9,15 @@
 #ifdef BEMAN_HAS_IMPORT_STD
 import std;
 #else
+#include <concepts>
 #include <type_traits>
 #include <utility>
 #endif
 #ifdef BEMAN_HAS_MODULES
+import beman.execution.detail.completion_sources;
+import beman.execution.detail.default_impls;
 import beman.execution.detail.forward_like;
+import beman.execution.detail.get_env;
 import beman.execution.detail.just;
 import beman.execution.detail.let;
 import beman.execution.detail.make_sender;
@@ -21,9 +25,14 @@ import beman.execution.detail.movable_value;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.sender_for;
+import beman.execution.detail.set_error;
+import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
 #else
+#include <beman/execution/detail/completion_sources.hpp>
+#include <beman/execution/detail/default_impls.hpp>
 #include <beman/execution/detail/forward_like.hpp>
+#include <beman/execution/detail/get_env.hpp>
 #include <beman/execution/detail/just.hpp>
 #include <beman/execution/detail/let.hpp>
 #include <beman/execution/detail/make_sender.hpp>
@@ -31,6 +40,8 @@ import beman.execution.detail.set_value;
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor_closure.hpp>
 #include <beman/execution/detail/sender_for.hpp>
+#include <beman/execution/detail/set_error.hpp>
+#include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
 #endif
 
@@ -59,6 +70,33 @@ struct stopped_as_error_t {
     auto operator()(Error error) const {
         return ::beman::execution::detail::make_sender_adaptor(*this, ::std::move(error));
     }
+
+  private:
+    // stopped_as_error(child, err) completes inline: a stopped completion of the child becomes an error
+    // completion (with err, or with an exception thrown while producing it); all others are forwarded.
+    template <typename Child>
+    struct sources {
+        template <typename Tag, typename Source, typename... Env>
+        static consteval auto value() -> bool {
+            using result_t = ::std::conditional_t<::std::same_as<Source, ::beman::execution::set_stopped_t>,
+                                                  ::beman::execution::set_error_t,
+                                                  Source>;
+            return ::std::same_as<Tag, result_t> &&
+                   ::beman::execution::detail::may_complete_with<Source, Child, Env...>();
+        }
+    };
+
+  public:
+    struct impls_for : ::beman::execution::detail::default_impls {
+        struct get_attrs_impl {
+            template <typename Child>
+            auto operator()(const auto&, const Child& child) const noexcept {
+                return ::beman::execution::detail::child_completion_attrs<Child, sources<Child>>{
+                    ::beman::execution::get_env(child)};
+            }
+        };
+        static constexpr auto get_attrs{get_attrs_impl{}};
+    };
 };
 
 } // namespace beman::execution::detail
