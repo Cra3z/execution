@@ -23,6 +23,50 @@ namespace test {
 template <typename Tag>
 struct channel_domain {};
 
+struct scheduler_domain {};
+
+//! A scheduler whose scheduling failures have a known domain but an unspecified execution agent.
+template <typename... Sigs>
+struct completion_scheduler {
+    using scheduler_concept = test_std::scheduler_tag;
+    int id{};
+
+    struct attrs {
+        int id;
+        template <typename Tag>
+        auto query(test_std::get_completion_scheduler_t<Tag>) const noexcept -> completion_scheduler {
+            return {id};
+        }
+        template <typename Tag>
+        static auto query(test_std::get_completion_domain_t<Tag>) noexcept -> scheduler_domain {
+            return {};
+        }
+    };
+
+    struct sender {
+        using sender_concept = test_std::sender_tag;
+        int id;
+        template <typename...>
+        static consteval auto get_completion_signatures() noexcept {
+            return test_std::completion_signatures<Sigs...>{};
+        }
+        auto get_env() const noexcept -> attrs { return {id}; }
+    };
+
+    auto schedule() const noexcept -> sender { return {id}; }
+    auto query(test_std::get_completion_scheduler_t<test_std::set_value_t>) const noexcept -> completion_scheduler {
+        return *this;
+    }
+    static auto query(test_std::get_completion_domain_t<test_std::set_value_t>) noexcept -> scheduler_domain {
+        return {};
+    }
+    static auto query(test_std::get_domain_t) noexcept -> scheduler_domain { return {}; }
+    static auto query(test_std::get_forward_progress_guarantee_t) noexcept {
+        return test_std::forward_progress_guarantee::weakly_parallel;
+    }
+    auto operator==(const completion_scheduler&) const -> bool = default;
+};
+
 //! A scheduler identified by an id.
 struct channel_scheduler {
     using scheduler_concept = test_std::scheduler_tag;

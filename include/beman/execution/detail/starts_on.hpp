@@ -13,16 +13,16 @@ import std;
 #include <utility>
 #endif
 #ifdef BEMAN_HAS_MODULES
-import beman.execution.detail.basic_sender;
 import beman.execution.detail.child_type;
-import beman.execution.detail.completion_signatures;
-import beman.execution.detail.completion_signatures_of_t;
+import beman.execution.detail.common_domain;
+import beman.execution.detail.compl_domain;
+import beman.execution.detail.completion_sources;
 import beman.execution.detail.continues_on;
 import beman.execution.detail.data_type;
 import beman.execution.detail.default_impls;
 import beman.execution.detail.dependent_sender;
 import beman.execution.detail.env;
-import beman.execution.detail.error_types_of_t;
+import beman.execution.detail.env_of_t;
 import beman.execution.detail.forward_like;
 import beman.execution.detail.fwd_env;
 import beman.execution.detail.get_completion_domain;
@@ -35,28 +35,25 @@ import beman.execution.detail.just;
 import beman.execution.detail.let;
 import beman.execution.detail.make_sender;
 import beman.execution.detail.meta.combine;
-import beman.execution.detail.meta.unique;
-import beman.execution.detail.query_with_default;
-import beman.execution.detail.sched_env;
 import beman.execution.detail.schedule_result_t;
 import beman.execution.detail.scheduler;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_for;
 import beman.execution.detail.sender_in;
-import beman.execution.detail.sends_stopped;
 import beman.execution.detail.set_error;
-import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
+import beman.execution.detail.type_list;
 #else
-#include <beman/execution/detail/basic_sender.hpp>
-#include <beman/execution/detail/completion_signatures.hpp>
-#include <beman/execution/detail/completion_signatures_of_t.hpp>
+#include <beman/execution/detail/child_type.hpp>
+#include <beman/execution/detail/common_domain.hpp>
+#include <beman/execution/detail/compl_domain.hpp>
+#include <beman/execution/detail/completion_sources.hpp>
 #include <beman/execution/detail/continues_on.hpp>
 #include <beman/execution/detail/data_type.hpp>
 #include <beman/execution/detail/default_impls.hpp>
 #include <beman/execution/detail/dependent_sender.hpp>
 #include <beman/execution/detail/env.hpp>
-#include <beman/execution/detail/error_types_of_t.hpp>
+#include <beman/execution/detail/env_of_t.hpp>
 #include <beman/execution/detail/forward_like.hpp>
 #include <beman/execution/detail/fwd_env.hpp>
 #include <beman/execution/detail/get_completion_domain.hpp>
@@ -69,16 +66,14 @@ import beman.execution.detail.set_value;
 #include <beman/execution/detail/let.hpp>
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/meta_combine.hpp>
-#include <beman/execution/detail/meta_unique.hpp>
-#include <beman/execution/detail/sched_env.hpp>
 #include <beman/execution/detail/schedule_result_t.hpp>
 #include <beman/execution/detail/scheduler.hpp>
+#include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_for.hpp>
 #include <beman/execution/detail/sender_in.hpp>
-#include <beman/execution/detail/sends_stopped.hpp>
 #include <beman/execution/detail/set_error.hpp>
-#include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
+#include <beman/execution/detail/type_list.hpp>
 #endif
 
 // ----------------------------------------------------------------------------
@@ -100,32 +95,107 @@ struct starts_on_t {
     }
 
   private:
-    template <typename Scheduler, typename ChildAttrs>
-    struct attrs : ::beman::execution::detail::hide_completion_queries<ChildAttrs> {
-        using base = ::beman::execution::detail::hide_completion_queries<ChildAttrs>;
+    template <typename Scheduler>
+    using start_sender =
+        decltype(::beman::execution::continues_on(::beman::execution::just(), ::std::declval<Scheduler>()));
 
-        attrs(Scheduler sch, ChildAttrs child_attrs) noexcept
-            : base(::std::move(child_attrs)), sch(::std::move(sch)) {}
+    // Starting the child can fail when scheduling or moving the child sender.
+    template <typename Scheduler, typename Child>
+    struct completion_map {
+        template <typename Source, typename Tag, typename... Env>
+        static consteval auto maps_to() -> bool {
+            if constexpr (::std::same_as<Source, ::beman::execution::set_value_t>) {
+                return ::std::same_as<Tag, ::beman::execution::set_error_t> &&
+                       !::std::is_nothrow_move_constructible_v<Child> &&
+                       ::beman::execution::detail::may_complete_with<Source, start_sender<Scheduler>, Env...>();
+            } else {
+                return ::std::same_as<Source, Tag> &&
+                       ::beman::execution::detail::may_complete_with<Source, start_sender<Scheduler>, Env...>();
+            }
+        }
+    };
+
+    template <typename Scheduler, typename Child>
+    struct attrs : ::beman::execution::detail::hide_completion_queries<::beman::execution::env_of_t<Child>> {
+        using base        = ::beman::execution::detail::hide_completion_queries<::beman::execution::env_of_t<Child>>;
+        using start_t     = start_sender<Scheduler>;
+        using start_attrs = ::beman::execution::detail::transformed_attrs<start_t, completion_map<Scheduler, Child>>;
+
+        template <typename Env>
+        using child_env =
+            ::beman::execution::detail::join_env<::beman::execution::let_value_t::template let_env_t<start_t, Env>,
+                                                 ::beman::execution::detail::fwd_env_t<Env>>;
+
+        template <typename Tag, typename... Env>
+        static constexpr bool has_child_completion =
+            ::beman::execution::detail::may_complete_with<Tag, Child, child_env<Env>...>();
+
+        template <typename Tag, typename... Env>
+        static constexpr bool has_start_completion =
+            !::std::same_as<typename start_attrs::template sources<Tag, Env...>::type,
+                            ::beman::execution::detail::type_list<>>;
+
+        template <typename Tag, typename... Env>
+            requires(!has_child_completion<Tag, Env...>)
+        static auto child_domain() -> ::beman::execution::detail::type_list<>;
+
+        template <typename Tag, typename... Env>
+            requires has_child_completion<Tag, Env...>
+        static auto child_domain() -> ::beman::execution::detail::type_list<
+            ::beman::execution::detail::compl_domain_of_t<Tag, Child, child_env<Env>...>>;
+
+        template <typename Tag, typename... Env>
+            requires(!has_start_completion<Tag, Env...>)
+        static auto start_domain() -> ::beman::execution::detail::type_list<>;
+
+        template <typename Tag, typename... Env>
+            requires has_start_completion<Tag, Env...>
+        static auto start_domain()
+            -> ::beman::execution::detail::type_list<decltype(::beman::execution::get_completion_domain<Tag>(
+                ::std::declval<start_attrs>(), ::std::declval<const Env&>()...))>;
+
+        template <typename... Domain>
+            requires(sizeof...(Domain) != 0)
+        static auto common_domain(::beman::execution::detail::type_list<Domain...>)
+            -> ::beman::execution::detail::common_domain_t<Domain...>;
+
+        attrs(Scheduler scheduler, ::beman::execution::env_of_t<Child> child_attrs) noexcept
+            : base(::std::move(child_attrs)), sch(::std::move(scheduler)) {}
 
         template <typename Env>
         auto wrap_env(const Env& env) const noexcept {
-            return ::beman::execution::detail::join_env(::beman::execution::detail::sched_env(this->sch), env);
+            return ::beman::execution::detail::join_env(
+                ::beman::execution::let_value_t::let_env(
+                    ::beman::execution::continues_on(::beman::execution::just(), this->sch), env),
+                ::beman::execution::detail::fwd_env(env));
         }
 
         using base::query;
 
         template <typename Tag, typename... Env>
-            requires requires(const attrs& self, const ChildAttrs& child_attrs, const Env&... env) {
-                ::beman::execution::get_completion_scheduler<Tag>(child_attrs, self.wrap_env(env)...);
-            }
-        auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept {
+            requires has_child_completion<Tag, Env...> && (!has_start_completion<Tag, Env...>)
+        auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept
+            -> decltype(::beman::execution::get_completion_scheduler<Tag>(this->child_attrs,
+                                                                          ::std::declval<child_env<Env>>()...)) {
             return ::beman::execution::get_completion_scheduler<Tag>(this->child_attrs, this->wrap_env(env)...);
         }
 
         template <typename Tag, typename... Env>
-        static auto query(::beman::execution::get_completion_domain_t<Tag>, const Env&...) noexcept
-            -> decltype(::beman::execution::get_completion_domain<Tag>(
-                ::std::declval<ChildAttrs>(), std::declval<attrs>().wrap_env(::std::declval<Env>())...)) {
+            requires(!has_child_completion<Tag, Env...>) && has_start_completion<Tag, Env...>
+        auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept
+            -> decltype(::beman::execution::get_completion_scheduler<Tag>(::std::declval<start_attrs>(), env...)) {
+            return ::beman::execution::get_completion_scheduler<Tag>(
+                start_attrs{::beman::execution::get_env(
+                    ::beman::execution::continues_on(::beman::execution::just(), this->sch))},
+                env...);
+        }
+
+        template <typename Tag, typename... Env>
+            requires(!::std::same_as<Tag, void>)
+        auto query(::beman::execution::get_completion_domain_t<Tag>, const Env&...) const noexcept
+            -> decltype(common_domain(
+                ::beman::execution::detail::meta::combine<decltype(child_domain<Tag, Env...>()),
+                                                          decltype(start_domain<Tag, Env...>())>{})) {
             return {};
         }
 
@@ -147,10 +217,9 @@ struct starts_on_t {
 
     struct impls_for : ::beman::execution::detail::default_impls {
         struct get_attrs_impl {
-            auto operator()(const auto& sch, const auto& child) const noexcept {
-                using Sch        = ::std::remove_cvref_t<decltype(sch)>;
-                using ChildAttrs = ::std::remove_cvref_t<decltype(::beman::execution::get_env(child))>;
-                return attrs<Sch, ChildAttrs>{sch, ::beman::execution::get_env(child)};
+            template <typename Sch, typename Child>
+            auto operator()(const Sch& sch, const Child& child) const noexcept {
+                return attrs<Sch, Child>{sch, ::beman::execution::get_env(child)};
             }
         };
         static constexpr auto get_attrs{get_attrs_impl{}};

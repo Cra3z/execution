@@ -18,12 +18,14 @@ import std;
 import beman.execution.detail.basic_sender;
 import beman.execution.detail.completion_signatures;
 import beman.execution.detail.completion_signatures_of_t;
+import beman.execution.detail.completion_sources;
 import beman.execution.detail.default_impls;
 import beman.execution.detail.env;
 import beman.execution.detail.execution_policy;
 import beman.execution.detail.forward_like;
 import beman.execution.detail.fwd_env;
 import beman.execution.detail.get_completion_signatures;
+import beman.execution.detail.get_env;
 import beman.execution.detail.make_sender;
 import beman.execution.detail.meta.combine;
 import beman.execution.detail.meta.unique;
@@ -38,12 +40,14 @@ import beman.execution.detail.set_value;
 #include <beman/execution/detail/basic_sender.hpp>
 #include <beman/execution/detail/completion_signatures.hpp>
 #include <beman/execution/detail/completion_signatures_of_t.hpp>
+#include <beman/execution/detail/completion_sources.hpp>
 #include <beman/execution/detail/default_impls.hpp>
 #include <beman/execution/detail/env.hpp>
 #include <beman/execution/detail/execution_policy.hpp>
 #include <beman/execution/detail/forward_like.hpp>
 #include <beman/execution/detail/fwd_env.hpp>
 #include <beman/execution/detail/get_completion_signatures.hpp>
+#include <beman/execution/detail/get_env.hpp>
 #include <beman/execution/detail/make_sender.hpp>
 #include <beman/execution/detail/meta_combine.hpp>
 #include <beman/execution/detail/meta_unique.hpp>
@@ -134,6 +138,23 @@ struct bulk_algo_t {
   private:
     static constexpr bool is_chunked = IsChunked;
 
+    template <typename F, typename Shape, typename Child>
+    struct completion_map {
+        template <typename Source, typename Tag, typename... Env>
+        static consteval auto maps_to() -> bool {
+            if constexpr (::std::same_as<Source, ::beman::execution::set_value_t> &&
+                          ::std::same_as<Tag, ::beman::execution::set_error_t>) {
+                return ::beman::execution::detail::may_complete_with<Source, Child, Env...>([]<typename... Args> {
+                    return !::beman::execution::detail::bulk_traits<IsChunked, F, Shape, Args...>::
+                        is_nothrow_invocable;
+                });
+            } else {
+                return ::std::same_as<Source, Tag> &&
+                       ::beman::execution::detail::may_complete_with<Source, Child, Env...>();
+            }
+        }
+    };
+
     template <typename, typename...>
     struct get_signatures;
     template <typename Policy, typename Shape, typename F, typename Sender, typename... Env>
@@ -160,6 +181,16 @@ struct bulk_algo_t {
     }
 
     struct impls_for : ::beman::execution::detail::default_impls {
+        struct get_attrs_impl {
+            template <typename Policy, typename Shape, typename F, typename Child>
+            auto operator()(const ::beman::execution::detail::product_type<Policy, Shape, F>&,
+                            const Child& child) const noexcept {
+                return ::beman::execution::detail::transformed_attrs<Child, completion_map<F, Shape, Child>>{
+                    ::beman::execution::get_env(child)};
+            }
+        };
+        static constexpr auto get_attrs{get_attrs_impl{}};
+
         struct complete_impl {
             template <typename Index,
                       typename Policy,
@@ -204,6 +235,8 @@ using bulk_chunked_t = ::beman::execution::detail::bulk_algo_t<true>;
 using bulk_unchunked_t = ::beman::execution::detail::bulk_algo_t<false>;
 
 struct bulk_t {
+    using impls_for = bulk_unchunked_t::impls_for;
+
     template <typename Policy, typename Shape, typename F>
         requires(::beman::execution::is_execution_policy_v<::std::remove_cvref_t<Policy>> && ::std::integral<Shape> &&
                  ::std::copy_constructible<::std::decay_t<F>>)

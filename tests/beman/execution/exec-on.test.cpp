@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 #include <test/execution.hpp>
+#include <test/channel_sender.hpp>
 #include <test/thread_pool.hpp>
 #include <test/sender_env.hpp>
 #include <beman/execution/detail/common.hpp>
@@ -133,6 +134,109 @@ auto test_on_attributes() {
         std::same_as<decltype(test_std::get_completion_domain<test_std::set_value_t>(attrs2, test_std::env<>{})),
                      custom_domain>);
 }
+struct counted_closure : test_std::sender_adaptor_closure<counted_closure> {
+    int* calls;
+    explicit counted_closure(int& count) : calls(&count) {}
+    template <test_std::sender Sender>
+    auto operator()(Sender&& sndr) const {
+        ++*calls;
+        return test_std::then(std::forward<Sender>(sndr), []() noexcept {});
+    }
+};
+
+auto test_completion_attributes() -> void {
+    using value       = test_std::set_value_t;
+    using error       = test_std::set_error_t;
+    using stopped     = test_std::set_stopped_t;
+    using env         = test_std::env<>;
+    using sch         = test::completion_scheduler<value()>;
+    using failing_sch = test::completion_scheduler<value(), error(int), stopped()>;
+    auto recv_env     = test_std::env{test_std::prop{test_std::get_start_scheduler, sch{31}}};
+
+    {
+        auto sndr = test_std::on(sch{17}, test_std::just());
+        ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(sndr), recv_env) == sch{31});
+        ASSERT((test::check_channel_scheduler<error, 0>(sndr, recv_env)));
+        static_assert(test::check_channel_domain<error, void, decltype(sndr), decltype(recv_env)>());
+        static_assert(test::check_channel_domain<stopped, void, decltype(sndr), decltype(recv_env)>());
+        static_assert(test::check_channel_domain<value, test::scheduler_domain, decltype(sndr), decltype(recv_env)>());
+    }
+    {
+        // Failures while starting the child are rescheduled on the return scheduler.
+        auto sndr = test_std::on(failing_sch{17}, test_std::just());
+        ASSERT(test_std::get_completion_scheduler<error>(test_std::get_env(sndr), recv_env) == sch{31});
+        ASSERT(test_std::get_completion_scheduler<stopped>(test_std::get_env(sndr), recv_env) == sch{31});
+        static_assert(test::check_channel_domain<error, test::scheduler_domain, decltype(sndr), decltype(recv_env)>());
+    }
+    {
+        // Failures of the return scheduling operation have an unspecified execution agent.
+        auto failing_env = test_std::env{test_std::prop{test_std::get_start_scheduler, failing_sch{31}}};
+        auto sndr        = test_std::on(sch{17}, test_std::just());
+        ASSERT((test::check_channel_scheduler<error, 0>(sndr, failing_env)));
+        ASSERT((test::check_channel_scheduler<stopped, 0>(sndr, failing_env)));
+        static_assert(
+            test::check_channel_domain<error, test::scheduler_domain, decltype(sndr), decltype(failing_env)>());
+    }
+    {
+        auto inline_env = test_std::env{test_std::prop{test_std::get_start_scheduler, test_std::inline_scheduler{}}};
+        auto sndr       = test_std::on(sch{17}, test_std::just());
+        ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(sndr), inline_env) == sch{17});
+        static_assert(
+            test::check_channel_domain<value, test::scheduler_domain, decltype(sndr), decltype(inline_env)>());
+    }
+    {
+        auto sndr = test_std::on(test_std::schedule(sch{31}), sch{17}, test_std::then([]() noexcept {}));
+        ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(sndr), env{}) == sch{31});
+        ASSERT((test::check_channel_scheduler<error, 0>(sndr, env{})));
+        static_assert(test::check_channel_domain<error, void, decltype(sndr), env>());
+        static_assert(test::check_channel_domain<stopped, void, decltype(sndr), env>());
+
+        auto throwing = test_std::on(test_std::schedule(sch{31}), sch{17}, test_std::then([]() {}));
+        ASSERT(test_std::get_completion_scheduler<error>(test_std::get_env(throwing), env{}) == sch{31});
+        static_assert(test::check_channel_domain<error, test::scheduler_domain, decltype(throwing), env>());
+    }
+    {
+        auto sndr = test_std::on(test_std::schedule(sch{31}), failing_sch{17}, test_std::then([]() noexcept {}));
+        ASSERT(test_std::get_completion_scheduler<error>(test_std::get_env(sndr), env{}) == sch{31});
+        ASSERT(test_std::get_completion_scheduler<stopped>(test_std::get_env(sndr), env{}) == sch{31});
+        static_assert(test::check_channel_domain<error, test::scheduler_domain, decltype(sndr), env>());
+
+        auto returning = test_std::on(test_std::schedule(failing_sch{31}), sch{17}, test_std::then([]() noexcept {}));
+        ASSERT((test::check_channel_scheduler<error, 0>(returning, env{})));
+        ASSERT((test::check_channel_scheduler<stopped, 0>(returning, env{})));
+        static_assert(test::check_channel_domain<error, test::scheduler_domain, decltype(returning), env>());
+    }
+    {
+        int  calls = 0;
+        auto sndr  = test_std::on(test_std::schedule(sch{31}), sch{17}, counted_closure{calls});
+        auto attrs = test_std::get_env(sndr);
+        ASSERT(test_std::get_completion_scheduler<value>(attrs, env{}) == sch{31});
+        test::use(test_std::get_completion_domain<value>(attrs, env{}));
+        ASSERT(calls == 0);
+    }
+    {
+        // The closure can remove a completion channel or introduce a different one.
+        auto sndr = test_std::on(test_std::schedule(sch{31}), sch{17}, test_std::let_value([]() noexcept {
+                                     return test_std::just_stopped();
+                                 }));
+        ASSERT(test_std::get_completion_scheduler<stopped>(test_std::get_env(sndr), env{}) == sch{31});
+        static_assert(test::check_channel_domain<value, void, decltype(sndr), env>());
+        static_assert(test::check_channel_domain<void, void, decltype(sndr), env>());
+        static_assert(test::check_channel_domain<stopped, test::scheduler_domain, decltype(sndr), env>());
+
+        auto recovered = test_std::on(
+            test::channel_sender<value(), error(int)>{}, sch{17}, test_std::upon_error([](int) noexcept {}));
+        ASSERT((test::check_channel_scheduler<value, 1>(recovered, env{})));
+        static_assert(test::check_channel_domain<error, void, decltype(recovered), env>());
+    }
+    {
+        auto sndr = test_std::on(test_std::schedule(sch{31}),
+                                 sch{17},
+                                 test_std::then([ptr = std::make_unique<int>(42)]() noexcept { return *ptr; }));
+        ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(sndr), env{}) == sch{31});
+        static_assert(test::check_channel_domain<value, test::scheduler_domain, decltype(sndr), env>());
+    }
+}
 } // namespace
 
 TEST(exec_on) {
@@ -191,4 +295,5 @@ TEST(exec_on) {
     ASSERT(on_id != std::this_thread::get_id());
 
     test_on_attributes();
+    test_completion_attributes();
 }

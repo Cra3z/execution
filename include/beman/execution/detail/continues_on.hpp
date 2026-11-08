@@ -199,15 +199,11 @@ struct continues_on_t {
         }
     };
 
-    // Every completion of continues_on(sndr, sch) is delivered from within the set_value completion of
-    // schedule(sch). That schedule operation is started by a completion of the child: where it completes
-    // can depend on that (e.g., for inline_scheduler). A Tag completion is delivered after a child's
-    // Source completion if Source is Tag, or if Tag is set_error_t and decay-copying the result datums
-    // of the Source completion may throw.
+    // Rescheduling preserves the child's channel unless decay-copying its results throws.
     template <typename Child>
-    struct rescheduled_sources {
-        template <typename Tag, typename Source, typename... Env>
-        static consteval auto value() -> bool {
+    struct completion_map {
+        template <typename Source, typename Tag, typename... Env>
+        static consteval auto maps_to() -> bool {
             return (::std::same_as<Tag, Source> &&
                     ::beman::execution::detail::may_complete_with<Source, Child, Env...>()) ||
                    (::std::same_as<Tag, ::beman::execution::set_error_t> &&
@@ -217,40 +213,23 @@ struct continues_on_t {
         }
     };
 
-    // The environment of the receiver connected to schedule(sch) when the schedule operation is
-    // started by a child completion with one of the tags in Sources: FWD-ENV(env) except that the
-    // start scheduler and the domain are those of these child completions.
-    template <typename Child, typename Sources, typename Env>
-    struct start_env;
+    // schedule(sch) starts on the child completion's agent. In particular, inline_scheduler uses
+    // that agent's scheduler and domain rather than those of the downstream receiver.
+    template <typename ChildAttrs, typename Tag, typename Env>
+    struct schedule_env {
+        const ChildAttrs& child_attrs;
+        const Env&        env;
 
-    template <typename Child, typename... Source, typename Env>
-    struct start_env<Child, ::beman::execution::detail::type_list<Source...>, Env> {
-        using child_attrs_t = ::std::remove_cvref_t<::beman::execution::env_of_t<Child>>;
-
-        const child_attrs_t& child_attrs;
-        const Env&           env;
-
-        // Different channels may report different scheduler objects: only a single one can be used.
-        template <typename S>
-        static auto
-        start_scheduler(::beman::execution::detail::type_list<S>, const child_attrs_t& attrs, const Env& env) noexcept
-            -> decltype(::beman::execution::get_completion_scheduler<S>(attrs,
-                                                                        ::beman::execution::detail::fwd_env(env))) {
-            return ::beman::execution::get_completion_scheduler<S>(attrs, ::beman::execution::detail::fwd_env(env));
-        }
-
-        // Sources is a template parameter so that a missing start scheduler isn't a hard error.
-        template <typename Sources = ::beman::execution::detail::type_list<Source...>>
+        // Keep substitution dependent on the query when the source scheduler is unknown.
+        template <typename Attrs = ChildAttrs>
         auto query(::beman::execution::get_start_scheduler_t) const noexcept
-            -> decltype(start_scheduler(Sources{},
-                                        ::std::declval<const child_attrs_t&>(),
-                                        ::std::declval<const Env&>())) {
-            return start_scheduler(Sources{}, this->child_attrs, this->env);
+            -> decltype(::beman::execution::get_completion_scheduler<Tag>(::std::declval<const Attrs&>(), this->env)) {
+            return ::beman::execution::get_completion_scheduler<Tag>(this->child_attrs, this->env);
         }
 
-        auto query(::beman::execution::get_domain_t) const noexcept -> ::beman::execution::detail::common_domain_t<
-            ::beman::execution::detail::
-                compl_domain_of_t<Source, Child, ::beman::execution::detail::fwd_env_t<Env>>...> {
+        template <typename Attrs = ChildAttrs>
+        auto query(::beman::execution::get_domain_t) const noexcept
+            -> decltype(::beman::execution::get_completion_domain<Tag>(::std::declval<const Attrs&>(), this->env)) {
             return {};
         }
 
@@ -266,55 +245,46 @@ struct continues_on_t {
     };
 
     template <typename Scheduler, typename Child>
-    struct attrs : ::beman::execution::detail::hide_completion_queries<::beman::execution::env_of_t<Child>> {
+    struct attrs : ::beman::execution::detail::hide_completion_queries<
+                       ::beman::execution::detail::transformed_attrs<Child, completion_map<Child>>> {
       private:
-        using base          = ::beman::execution::detail::hide_completion_queries<::beman::execution::env_of_t<Child>>;
-        using child_attrs_t = ::std::remove_cvref_t<::beman::execution::env_of_t<Child>>;
+        using child_attrs_t     = ::beman::execution::detail::transformed_attrs<Child, completion_map<Child>>;
+        using base              = ::beman::execution::detail::hide_completion_queries<child_attrs_t>;
         using schedule_sender_t = ::beman::execution::schedule_result_t<Scheduler>;
 
-        // The child completions after which a Tag completion is delivered (Env... is forwarded).
-        template <typename Tag, typename... Env>
-        using rescheduled = ::beman::execution::detail::completion_sources_t<rescheduled_sources<Child>, Tag, Env...>;
+      public:
+        template <typename Tag, typename Env>
+        using schedule_env_t = schedule_env<child_attrs_t, Tag, Env>;
 
-        // Whether schedule(sch) may itself complete with Tag, which is then forwarded (Env... is forwarded).
+      private:
         template <typename Tag, typename... Env>
-        static constexpr bool forwards_scheduling_completion =
+        using child_sources = typename child_attrs_t::template sources<Tag, Env...>::type;
+
+        template <typename Tag, typename... Env>
+        static constexpr bool has_schedule_completion =
             !::std::same_as<Tag, ::beman::execution::set_value_t> &&
-            ::beman::execution::detail::may_complete_with<Tag, schedule_sender_t, Env...>();
+            ::beman::execution::detail::
+                may_complete_with<Tag, schedule_sender_t, ::beman::execution::detail::fwd_env_t<Env>...>();
 
-        // The scheduler on which schedule(sch) completes with set_value_t when started by one of Source...
-        template <typename... Source, typename... Env>
-            requires(sizeof...(Source) != 0)
-        static auto rescheduled_scheduler(::beman::execution::detail::type_list<Source...>,
-                                          const Scheduler&     sch,
-                                          const child_attrs_t& child_attrs,
-                                          const Env&... env) noexcept
-            -> decltype(::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>(
-                sch, ::std::declval<start_env<Child, ::beman::execution::detail::type_list<Source...>, Env>>()...)) {
-            return ::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>(
-                sch, start_env<Child, ::beman::execution::detail::type_list<Source...>, Env>{child_attrs, env}...);
-        }
-
-        // The domains of the agents on which Tag completions are delivered, as type_list<> or type_list<D>:
-        // those delivered from schedule(sch)'s set_value completion, and those forwarded from schedule(sch).
-        template <typename... Env>
-        static auto rescheduled_domain(::beman::execution::detail::type_list<>, const Env&...)
-            -> ::beman::execution::detail::type_list<>;
-
-        template <typename... Source, typename... Env>
-            requires(sizeof...(Source) != 0)
-        static auto rescheduled_domain(::beman::execution::detail::type_list<Source...>, const Env&...)
-            -> ::beman::execution::detail::type_list<
-                decltype(::beman::execution::get_completion_domain<::beman::execution::set_value_t>(
-                    ::std::declval<const Scheduler&>(),
-                    ::std::declval<start_env<Child, ::beman::execution::detail::type_list<Source...>, Env>>()...))>;
+        // A completion may come from a rescheduled child result or from schedule(sch) itself.
+        // Collect both domains, omitting paths that cannot produce this channel.
+        template <typename Tag, typename... Env>
+            requires ::std::same_as<child_sources<Tag, Env...>, ::beman::execution::detail::type_list<>>
+        static auto rescheduled_domain() -> ::beman::execution::detail::type_list<>;
 
         template <typename Tag, typename... Env>
-        static auto scheduling_domain(const Env&...) -> ::beman::execution::detail::type_list<>;
+            requires(!::std::same_as<child_sources<Tag, Env...>, ::beman::execution::detail::type_list<>>)
+        static auto rescheduled_domain() -> ::beman::execution::detail::type_list<
+            decltype(::beman::execution::get_completion_domain<::beman::execution::set_value_t>(
+                ::std::declval<const Scheduler&>(), ::std::declval<schedule_env_t<Tag, Env>>()...))>;
 
         template <typename Tag, typename... Env>
-            requires forwards_scheduling_completion<Tag, ::beman::execution::detail::fwd_env_t<Env>...>
-        static auto scheduling_domain(const Env&...) -> ::beman::execution::detail::type_list<
+            requires(!has_schedule_completion<Tag, Env...>)
+        static auto scheduling_domain() -> ::beman::execution::detail::type_list<>;
+
+        template <typename Tag, typename... Env>
+            requires has_schedule_completion<Tag, Env...>
+        static auto scheduling_domain() -> ::beman::execution::detail::type_list<
             ::beman::execution::detail::
                 compl_domain_of_t<Tag, schedule_sender_t, ::beman::execution::detail::fwd_env_t<Env>...>>;
 
@@ -325,32 +295,27 @@ struct continues_on_t {
 
       public:
         attrs(Scheduler sch, ::beman::execution::env_of_t<Child> child_attrs) noexcept
-            : base(::std::move(child_attrs)), sch(::std::move(sch)) {}
+            : base(child_attrs_t{::std::move(child_attrs)}), sch(::std::move(sch)) {}
 
         using base::query;
 
-        // When schedule(sch) itself completes with Tag, e.g., because scheduling fails, that happens on an
-        // unspecified agent ([exec.continues.on]): a completion scheduler is only known otherwise.
+        // Errors and stopped completions from schedule(sch) run on an unspecified agent.
         template <typename Tag, typename... Env>
-            requires(!forwards_scheduling_completion<Tag, ::beman::execution::detail::fwd_env_t<Env>...>)
+            requires(!has_schedule_completion<Tag, Env...>) &&
+                    (!::std::same_as<child_sources<Tag, Env...>, ::beman::execution::detail::type_list<>>)
         auto query(::beman::execution::get_completion_scheduler_t<Tag>, const Env&... env) const noexcept
-            -> decltype(rescheduled_scheduler(rescheduled<Tag, ::beman::execution::detail::fwd_env_t<Env>...>{},
-                                              ::std::declval<const Scheduler&>(),
-                                              ::std::declval<const child_attrs_t&>(),
-                                              env...)) {
-            return rescheduled_scheduler(rescheduled<Tag, ::beman::execution::detail::fwd_env_t<Env>...>{},
-                                         this->sch,
-                                         this->child_attrs,
-                                         env...);
+            -> decltype(::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>(
+                ::std::declval<const Scheduler&>(), ::std::declval<schedule_env_t<Tag, Env>>()...)) {
+            return ::beman::execution::get_completion_scheduler<::beman::execution::set_value_t>(
+                this->sch, schedule_env_t<Tag, Env>{this->child_attrs, env}...);
         }
 
         template <typename Tag, typename... Env>
             requires(!::std::same_as<Tag, void>)
-        auto query(::beman::execution::get_completion_domain_t<Tag>, const Env&... env) const noexcept
-            -> decltype(common_domain(::beman::execution::detail::meta::combine<
-                                      decltype(rescheduled_domain(
-                                          rescheduled<Tag, ::beman::execution::detail::fwd_env_t<Env>...>{}, env...)),
-                                      decltype(scheduling_domain<Tag>(env...))>{})) {
+        auto query(::beman::execution::get_completion_domain_t<Tag>, const Env&...) const noexcept
+            -> decltype(common_domain(
+                ::beman::execution::detail::meta::combine<decltype(rescheduled_domain<Tag, Env...>()),
+                                                          decltype(scheduling_domain<Tag, Env...>())>{})) {
             return {};
         }
 

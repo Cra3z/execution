@@ -105,21 +105,6 @@ struct then_transform_t {
     using transform = typename ::beman::execution::detail::then_transform<Fun, Replace, Completion>::type;
 };
 
-template <typename, typename, typename>
-struct then_exception_fun : ::std::false_type {};
-template <typename Comp, typename Fun, typename... A>
-struct then_exception_fun<Comp, Fun, Comp(A...)>
-    : ::std::bool_constant<not noexcept(::std::declval<Fun>()(::std::declval<A>()...))> {};
-
-template <typename, typename, typename>
-struct then_exception : ::std::false_type {};
-template <typename Comp, typename Fun, typename Completion, typename... Completions>
-struct then_exception<Comp, Fun, ::beman::execution::completion_signatures<Completion, Completions...>> {
-    static constexpr bool value{
-        then_exception_fun<Comp, Fun, Completion>::value ||
-        then_exception<Comp, Fun, ::beman::execution::completion_signatures<Completions...>>::value};
-};
-
 template <typename Completion>
 struct then_t {
     template <::beman::execution::detail::movable_value Fun>
@@ -140,28 +125,23 @@ struct then_t {
     }
 
   private:
-    // then-cpo(child, fun) evaluates all completions inline: a Tag completion happens within a
-    // Source completion of the child if
-    // - Source is forwarded unchanged and Tag is Source,
-    // - Source is passed to fun and Tag is set_value_t (fun's result), or
-    // - Source is passed to fun, Tag is set_error_t, and fun may throw.
+    // The intercepted channel produces fun's value or an exception; other channels are forwarded.
     template <typename Fun, typename Child>
-    struct sources {
-        template <typename Tag, typename Source, typename... Env>
-        static consteval auto value() -> bool {
-            if constexpr (!::std::same_as<Source, Completion>)
-                return ::std::same_as<Tag, Source> &&
-                       ::beman::execution::detail::may_complete_with<Source, Child, Env...>();
-            else if constexpr (::std::same_as<Tag, ::beman::execution::set_value_t>)
-                return ::beman::execution::detail::may_complete_with<Source, Child, Env...>();
-            else if constexpr (::std::same_as<Tag, ::beman::execution::set_error_t>)
+    struct completion_map {
+        template <typename Source, typename Tag, typename... Env>
+        static consteval auto maps_to() -> bool {
+            if constexpr (::std::same_as<Source, Completion> && ::std::same_as<Tag, ::beman::execution::set_error_t>) {
                 return ::beman::execution::detail::may_complete_with<Source, Child, Env...>(
                     []<typename... Args> { return !::std::is_nothrow_invocable_v<Fun, Args...>; },
                     // Without the child's signatures, only upon_stopped knows fun's arguments.
                     !::std::same_as<Completion, ::beman::execution::set_stopped_t> ||
                         !::std::is_nothrow_invocable_v<Fun>);
-            else
-                return false;
+            } else {
+                using result_t =
+                    ::std::conditional_t<::std::same_as<Source, Completion>, ::beman::execution::set_value_t, Source>;
+                return ::std::same_as<Tag, result_t> &&
+                       ::beman::execution::detail::may_complete_with<Source, Child, Env...>();
+            }
         }
     };
 
@@ -182,7 +162,9 @@ struct then_t {
                     ::beman::execution::detail::then_transform_t<Fun, Comp>::template transform,
                     child_sigs_t>,
                 ::std::conditional_t<
-                    ::beman::execution::detail::then_exception<Comp, Fun, child_sigs_t>::value,
+                    ::beman::execution::detail::
+                        may_complete_with<Comp, Child, ::beman::execution::detail::fwd_env_t<Env>...>(
+                            []<typename... Args> { return !::std::is_nothrow_invocable_v<Fun, Args...>; }),
                     ::beman::execution::completion_signatures<::beman::execution::set_error_t(::std::exception_ptr)>,
                     ::beman::execution::completion_signatures<>>>>;
             return type{};
@@ -200,7 +182,7 @@ struct then_t {
         struct get_attrs_impl {
             template <typename Fun, typename Child>
             auto operator()(const Fun&, const Child& child) const noexcept {
-                return ::beman::execution::detail::child_completion_attrs<Child, sources<Fun, Child>>{
+                return ::beman::execution::detail::transformed_attrs<Child, completion_map<Fun, Child>>{
                     ::beman::execution::get_env(child)};
             }
         };

@@ -72,12 +72,11 @@ struct stopped_as_error_t {
     }
 
   private:
-    // stopped_as_error(child, err) completes inline: a stopped completion of the child becomes an error
-    // completion (with err, or with an exception thrown while producing it); all others are forwarded.
+    // Stopped completions become errors; other channels are forwarded.
     template <typename Child>
-    struct sources {
-        template <typename Tag, typename Source, typename... Env>
-        static consteval auto value() -> bool {
+    struct completion_map {
+        template <typename Source, typename Tag, typename... Env>
+        static consteval auto maps_to() -> bool {
             using result_t = ::std::conditional_t<::std::same_as<Source, ::beman::execution::set_stopped_t>,
                                                   ::beman::execution::set_error_t,
                                                   Source>;
@@ -91,7 +90,7 @@ struct stopped_as_error_t {
         struct get_attrs_impl {
             template <typename Child>
             auto operator()(const auto&, const Child& child) const noexcept {
-                return ::beman::execution::detail::child_completion_attrs<Child, sources<Child>>{
+                return ::beman::execution::detail::transformed_attrs<Child, completion_map<Child>>{
                     ::beman::execution::get_env(child)};
             }
         };

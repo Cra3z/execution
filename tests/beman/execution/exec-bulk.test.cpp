@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 #include <test/execution.hpp>
+#include <test/channel_sender.hpp>
 #include <test/sender_env.hpp>
 #include <beman/execution/detail/common.hpp>
 #ifdef BEMAN_HAS_IMPORT_STD
@@ -29,6 +30,54 @@ import beman.execution.detail.meta.unique;
 #endif
 
 namespace {
+
+template <typename Algo>
+auto test_bulk_completion_attributes(Algo algo) -> void {
+    using value   = test_std::set_value_t;
+    using error   = test_std::set_error_t;
+    using stopped = test_std::set_stopped_t;
+    using env     = test_std::env<>;
+
+    auto nothrow = algo(test::channel_sender<value()>{}, test_std::seq, 2, [](auto...) noexcept {});
+    ASSERT((test::check_channel_scheduler<value, 1>(nothrow)));
+    ASSERT((test::check_channel_scheduler<error, 0>(nothrow, env{})));
+    static_assert(test::check_channel_domain<error, void, decltype(nothrow), env>());
+    static_assert(test::check_channel_domain<stopped, void, decltype(nothrow), env>());
+
+    auto throwing = algo(test::channel_sender<value()>{}, test_std::seq, 2, [](auto...) {});
+    ASSERT((test::check_channel_scheduler<error, 1>(throwing, env{})));
+    static_assert(test::check_channel_domain<error, test::channel_domain<value>, decltype(throwing), env>());
+
+    auto mixed = algo(test::channel_sender<value(), error(int), stopped()>{}, test_std::seq, 2, [](auto...) {});
+    ASSERT((test::check_channel_scheduler<error, 0>(mixed, env{})));
+    ASSERT((test::check_channel_scheduler<stopped, 3>(mixed, env{})));
+    static_assert(test::check_channel_domain<
+                  error,
+                  test_std::indeterminate_domain<test::channel_domain<value>, test::channel_domain<error>>,
+                  decltype(mixed),
+                  env>());
+
+    auto error_only = algo(test::channel_sender<error(int)>{}, test_std::seq, 2, [](auto...) {});
+    ASSERT((test::check_channel_scheduler<error, 2>(error_only, env{})));
+    static_assert(test::check_channel_domain<value, void, decltype(error_only), env>());
+    static_assert(test::check_channel_domain<error, test::channel_domain<error>, decltype(error_only), env>());
+
+    // Completion arguments are passed to the callback as lvalues, regardless of their signature.
+    auto lvalue = algo(test::channel_sender<value(int)>{},
+                       test_std::seq,
+                       2,
+                       []<typename... Args>(Args&&...) noexcept((!std::is_lvalue_reference_v<Args>&&...)) {});
+    ASSERT((test::check_channel_scheduler<error, 1>(lvalue, env{})));
+    static_assert(test::check_channel_domain<error, test::channel_domain<value>, decltype(lvalue), env>());
+    using sch     = test::completion_scheduler<value()>;
+    auto recv_env = test_std::env{test_std::prop{test_std::get_start_scheduler, sch{11}}};
+    auto dependent =
+        algo(test_std::read_env(test_std::get_start_scheduler), test_std::seq, 2, [](auto...) noexcept {});
+    ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(dependent), recv_env) == sch{11});
+    static_assert(
+        test::check_channel_domain<value, test::scheduler_domain, decltype(dependent), decltype(recv_env)>());
+    static_assert(test::check_channel_domain<error, void, decltype(dependent), decltype(recv_env)>());
+}
 
 auto test_bulk() {
     auto b0 = test_std::bulk(test_std::just(), test_std::seq, 1, [](int) {});
@@ -509,7 +558,7 @@ struct pstl_env1 {
 
 struct pstl_env2 {
     template <typename Env>
-    static auto query(test_std::get_completion_domain_t<>, const Env&) noexcept {
+    static auto query(test_std::get_completion_domain_t<test_std::set_value_t>, const Env&) noexcept {
         return pstl_domain<test_std::set_value_t>{};
     }
 };
@@ -594,6 +643,9 @@ auto test_bulk_attributes() {
 } // namespace
 
 TEST(exec_bulk) {
+    test_bulk_completion_attributes(test_std::bulk);
+    test_bulk_completion_attributes(test_std::bulk_chunked);
+    test_bulk_completion_attributes(test_std::bulk_unchunked);
 
     try {
 

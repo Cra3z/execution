@@ -232,6 +232,13 @@ auto test_completion_queries() {
         static_assert(std::same_as<completion_domain_t<error, decltype(sndr), env>, query_domain>);
     }
     {
+        // An unknown scheduling-failure domain must not be dropped from the combined domain.
+        using sch_t = query_scheduler<false, value(), error(int)>;
+        auto sndr   = test_std::continues_on(test_std::just_error(42), sch_t{});
+        static_assert(not has_completion_domain<error, decltype(sndr)>);
+        static_assert(not has_completion_scheduler<error, decltype(sndr)>);
+    }
+    {
         // Stopped completions of schedule(sch) itself: their domain is known, a scheduler is not reported.
         using sch_t = query_scheduler<true, value(), stopped()>;
         auto sndr   = test_std::continues_on(test_std::just(), sch_t{});

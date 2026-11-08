@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 #include <test/execution.hpp>
+#include <test/channel_sender.hpp>
 #include <test/sender_env.hpp>
 #include <test/completion_test.hpp>
 #ifdef BEMAN_HAS_IMPORT_STD
@@ -122,6 +123,78 @@ auto test_starts_on_attributes() {
     test::test_sender_env<true>(42, test::test_forwardable_attr{}, test_std::starts_on(loop.get_scheduler(), s));
     test::test_sender_env<false>(84, test::test_non_forwardable_attr{}, test_std::starts_on(loop.get_scheduler(), s));
 }
+struct throwing_move_sender : test::channel_sender<test_std::set_value_t()> {
+    throwing_move_sender() = default;
+    throwing_move_sender(throwing_move_sender&&) noexcept(false) {}
+};
+
+auto test_completion_attributes() -> void {
+    using value   = test_std::set_value_t;
+    using error   = test_std::set_error_t;
+    using stopped = test_std::set_stopped_t;
+    using env     = test_std::env<>;
+    using sch     = test::completion_scheduler<value()>;
+
+    {
+        auto sndr = test_std::starts_on(sch{17}, test::channel_sender<value()>{});
+        ASSERT((test::check_channel_scheduler<value, 1>(sndr, env{})));
+        ASSERT((test::check_channel_scheduler<error, 0>(sndr, env{})));
+        ASSERT((test::check_channel_scheduler<stopped, 0>(sndr, env{})));
+        static_assert(test::check_channel_domain<value, test::channel_domain<value>, decltype(sndr), env>());
+        static_assert(test::check_channel_domain<error, void, decltype(sndr), env>());
+        static_assert(test::check_channel_domain<stopped, void, decltype(sndr), env>());
+        static_assert(test::check_channel_domain<error, void, decltype(sndr)>());
+    }
+    {
+        // The child's and the scheduling operation's failures can come from different agents.
+        using failing_sch = test::completion_scheduler<value(), error(int), stopped()>;
+        auto sndr = test_std::starts_on(failing_sch{17}, test::channel_sender<value(), error(int), stopped()>{});
+        ASSERT((test::check_channel_scheduler<value, 1>(sndr, env{})));
+        ASSERT((test::check_channel_scheduler<error, 0>(sndr, env{})));
+        ASSERT((test::check_channel_scheduler<stopped, 0>(sndr, env{})));
+        static_assert(test::check_channel_domain<
+                      error,
+                      test_std::indeterminate_domain<test::channel_domain<error>, test::scheduler_domain>,
+                      decltype(sndr),
+                      env>());
+        static_assert(test::check_channel_domain<
+                      stopped,
+                      test_std::indeterminate_domain<test::channel_domain<stopped>, test::scheduler_domain>,
+                      decltype(sndr),
+                      env>());
+
+        auto empty = test_std::starts_on(failing_sch{}, test::channel_sender<>{});
+        static_assert(test::check_channel_domain<value, void, decltype(empty), env>());
+        static_assert(test::check_channel_domain<error, test::scheduler_domain, decltype(empty), env>());
+        static_assert(test::check_channel_domain<stopped, test::scheduler_domain, decltype(empty), env>());
+        ASSERT((test::check_channel_scheduler<error, 0>(empty, env{})));
+    }
+    {
+        // Moving the child happens on the scheduler's value completion agent.
+        auto sndr = test_std::starts_on(sch{17}, throwing_move_sender{});
+        ASSERT(test_std::get_completion_scheduler<error>(test_std::get_env(sndr), env{}) == sch{17});
+        static_assert(test::check_channel_domain<error, test::scheduler_domain, decltype(sndr), env>());
+    }
+    {
+        auto sndr = test_std::starts_on(sch{17}, test_std::just_error(42));
+        ASSERT(test_std::get_completion_scheduler<error>(test_std::get_env(sndr), env{}) == sch{17});
+        static_assert(test::check_channel_domain<error, test::scheduler_domain, decltype(sndr), env>());
+        static_assert(test::check_channel_domain<value, void, decltype(sndr), env>());
+    }
+    {
+        auto sndr = test_std::starts_on(sch{17}, test_std::read_env(test_std::get_start_scheduler));
+        ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(sndr), env{}) == sch{17});
+        static_assert(test::check_channel_domain<value, test::scheduler_domain, decltype(sndr), env>());
+        static_assert(test::check_channel_domain<error, void, decltype(sndr), env>());
+    }
+    {
+        // Resolve inline scheduling in the receiver environment before starting an inline child.
+        auto recv_env = test_std::env{test_std::prop{test_std::get_start_scheduler, sch{29}}};
+        auto sndr     = test_std::starts_on(test_std::inline_scheduler{}, test_std::just());
+        ASSERT(test_std::get_completion_scheduler<value>(test_std::get_env(sndr), recv_env) == sch{29});
+        static_assert(test::check_channel_domain<value, test::scheduler_domain, decltype(sndr), decltype(recv_env)>());
+    }
+}
 } // namespace
 
 TEST(exec_starts_on) {
@@ -140,4 +213,5 @@ TEST(exec_starts_on) {
     test_starts_on_completions();
     test_starts_on_start_scheduler();
     test_starts_on_attributes();
+    test_completion_attributes();
 }

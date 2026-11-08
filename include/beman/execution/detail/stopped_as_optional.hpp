@@ -94,11 +94,9 @@ struct stopped_as_optional_t {
         using type = Env;
     };
 
-    // stopped_as_optional(child) completes inline: a value completion of the child becomes an optional
-    // holding the value, a stopped completion an empty optional; an exception thrown while producing
-    // the optional becomes an error completion. Error completions are forwarded.
+    // Values and stopped completions produce optionals. Constructing an optional may produce an error.
     template <typename Child>
-    struct sources {
+    struct completion_map {
         template <typename Source, typename... Env>
         static consteval auto may_throw() -> bool {
             using env_t = typename value_type_env<Env...>::type;
@@ -116,17 +114,18 @@ struct stopped_as_optional_t {
             }
         }
 
-        template <typename Tag, typename Source, typename... Env>
-        static consteval auto value() -> bool {
-            if constexpr (::std::same_as<Source, ::beman::execution::set_error_t>)
-                return ::std::same_as<Tag, Source> &&
-                       ::beman::execution::detail::may_complete_with<Source, Child, Env...>();
-            else if constexpr (::std::same_as<Tag, ::beman::execution::set_value_t>)
-                return ::beman::execution::detail::may_complete_with<Source, Child, Env...>();
-            else if constexpr (::std::same_as<Tag, ::beman::execution::set_error_t>)
+        template <typename Source, typename Tag, typename... Env>
+        static consteval auto maps_to() -> bool {
+            if constexpr (::std::same_as<Tag, ::beman::execution::set_error_t> &&
+                          !::std::same_as<Source, ::beman::execution::set_error_t>) {
                 return may_throw<Source, Env...>();
-            else
-                return false;
+            } else {
+                using result_t = ::std::conditional_t<::std::same_as<Source, ::beman::execution::set_stopped_t>,
+                                                      ::beman::execution::set_value_t,
+                                                      Source>;
+                return ::std::same_as<Tag, result_t> &&
+                       ::beman::execution::detail::may_complete_with<Source, Child, Env...>();
+            }
         }
     };
 
@@ -135,7 +134,7 @@ struct stopped_as_optional_t {
         struct get_attrs_impl {
             template <typename Child>
             auto operator()(const auto&, const Child& child) const noexcept {
-                return ::beman::execution::detail::child_completion_attrs<Child, sources<Child>>{
+                return ::beman::execution::detail::transformed_attrs<Child, completion_map<Child>>{
                     ::beman::execution::get_env(child)};
             }
         };

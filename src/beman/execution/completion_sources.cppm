@@ -7,9 +7,6 @@ module;
 export module beman.execution.detail.completion_sources;
 
 namespace beman::execution::detail {
-export using beman::execution::detail::any_completion_args;
 export using beman::execution::detail::may_complete_with;
-export using beman::execution::detail::completion_tags;
-export using beman::execution::detail::completion_sources_t;
-export using beman::execution::detail::child_completion_attrs;
+export using beman::execution::detail::transformed_attrs;
 } // namespace beman::execution::detail
