@@ -734,10 +734,10 @@ $(document).ready(function(){initNavTree('task_8hpp_source.html',''); initResiza
 <div class="line"><a id="l00632" name="l00632"></a><span class="lineno">  632</span> </div>
 <div class="line"><a id="l00633" name="l00633"></a><span class="lineno">  633</span>    <span class="keyword">template</span> &lt;<span class="keyword">typename</span> Q, <span class="keyword">typename</span>... Args&gt;</div>
 <div class="line"><a id="l00634" name="l00634"></a><span class="lineno">  634</span>        <span class="keyword">requires</span>(<a class="code hl_variable" href="namespacebeman_1_1execution.html#a9b0f7f25fb2dfd00f655321db3a2d18f">::beman::execution::forwarding_query</a>(Q())) &amp;&amp; <span class="keyword">requires</span>(<span class="keyword">const</span> Promise* p, Q q, Args&amp;&amp;... args) {</div>
-<div class="line"><a id="l00635" name="l00635"></a><span class="lineno">  635</span>            q(p-&gt;get_environment(), ::std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a id="l00635" name="l00635"></a><span class="lineno">  635</span>            p-&gt;get_environment().query(q, ::std::forward&lt;Args&gt;(args)...);</div>
 <div class="line"><a id="l00636" name="l00636"></a><span class="lineno">  636</span>        }</div>
 <div class="line"><a id="l00637" name="l00637"></a><span class="lineno">  637</span>    <span class="keyword">auto</span> query(Q q, Args&amp;&amp;... args) <span class="keyword">const</span> <span class="keyword">noexcept</span> {</div>
-<div class="line"><a id="l00638" name="l00638"></a><span class="lineno">  638</span>        <span class="keywordflow">return</span> q(this-&gt;promise-&gt;get_environment(), ::std::forward&lt;Args&gt;(args)...);</div>
+<div class="line"><a id="l00638" name="l00638"></a><span class="lineno">  638</span>        <span class="keywordflow">return</span> this-&gt;promise-&gt;get_environment().query(q, ::std::forward&lt;Args&gt;(args)...);</div>
 <div class="line"><a id="l00639" name="l00639"></a><span class="lineno">  639</span>    }</div>
 <div class="line"><a id="l00640" name="l00640"></a><span class="lineno">  640</span> </div>
 <div class="line"><a id="l00641" name="l00641"></a><span class="lineno">  641</span>    <span class="keyword">const</span> Promise* promise;</div>
