@@ -62,3 +62,8 @@ foreach(EXAMPLE ${EXAMPLES})
     endif()
     add_test(NAME ${EXAMPLE_TARGET} COMMAND ${EXAMPLE_TARGET})
 endforeach()
+
+# WebAssembly only: using the library from JavaScript/TypeScript (needs embind)
+if(EMSCRIPTEN AND NOT BEMAN_USE_MODULES)
+    add_subdirectory(wasm)
+endif()

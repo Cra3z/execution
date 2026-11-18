@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- examples/wasm/index.html -->
+<!-- SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>beman.execution and JavaScript promises</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
+    button { margin: 0 .5rem .5rem 0; padding: .4rem .8rem; }
+    pre { background: #f4f4f4; padding: .8rem; min-height: 12rem; white-space: pre-wrap; }
+    code { background: #f4f4f4; padding: 0 .25rem; }
+  </style>
+</head>
+<body>
+  <h1>beman.execution &harr; JavaScript promises</h1>
+  <p>
+    C++ senders and coroutines compiled to WebAssembly, exposed as functions returning
+    promises. Serve this directory with <code>node serve.mjs</code>: threads need a
+    cross-origin isolated page (<code>COOP</code>/<code>COEP</code> headers).
+  </p>
+  <button id="sum">sum(promise, promise)</button>
+  <button id="all">all(a, failing)</button>
+  <button id="timeout">abortable(slow, timeout 200 ms)</button>
+  <button id="delay">delay(3 s) &mdash; abortable</button>
+  <button id="abort" disabled>abort</button>
+  <pre id="log"></pre>
+
+  <script type="module">
+    import createModule from './beman_wasm.mjs';
+
+    const log = document.getElementById('log');
+    const print = (text) => { log.textContent += text + '\n'; };
+    const wasm = await createModule();
+    print(`isolated: ${crossOriginIsolated}, wasm module loaded`);
+
+    const later = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+    const failing = (ms, message) => new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms));
+
+    // shows the result or the error of a promise
+    const show = async (name, promise) => {
+      const start = performance.now();
+      try {
+        print(`${name}: ${JSON.stringify(await promise)} (${Math.round(performance.now() - start)} ms)`);
+      } catch (error) {
+        print(`${name}: rejected with ${error.name}: ${error.message}`);
+      }
+    };
+
+    document.getElementById('sum').onclick = () =>
+      show('sum', wasm.sum(later(30, 20), later(50, 22)));
+    document.getElementById('all').onclick = () =>
+      show('all', wasm.all(later(100, 'a'), failing(50, 'second failed')));
+    document.getElementById('timeout').onclick = () =>
+      show('abortable', wasm.abortable(later(2000, 'slow'), AbortSignal.timeout(200)));
+
+    let controller;
+    const abortButton = document.getElementById('abort');
+    document.getElementById('delay').onclick = async () => {
+      controller = new AbortController();
+      abortButton.disabled = false;
+      await show('delay', wasm.delay(3000, 'finished', controller.signal));
+      abortButton.disabled = true;
+    };
+    abortButton.onclick = () => controller.abort();
+  </script>
+</body>
+</html>
