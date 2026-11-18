@@ -85,12 +85,29 @@ The following instructions build the library and the examples:
       "llvm-release"
       "msvc-debug"
       "msvc-release"
+      "wasm-debug"
+      "wasm-release"
 
 
     CXX=g++-15 cmake --workflow --preset release
 
 The implementation compiles and passes tests using [clang](https://clang.llvm.org/),
 [gcc](http://gcc.gnu.org), and [MSVC++](https://visualstudio.microsoft.com/vs/features/cplusplus/).
+
+### WebAssembly
+
+With the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
+activated (`source emsdk_env.sh`; the SDK is also found via `EMSCRIPTEN_ROOT` or `emcc`
+in `PATH`) the `wasm-debug` and `wasm-release` presets build the library, tests, and
+examples for WebAssembly and run the tests with node:
+
+    cmake --workflow --preset wasm-release
+
+The toolchain file `infra/cmake/emscripten-toolchain.cmake` enables what the library needs:
+`-pthread` (also propagated to users of the library target), a pool of web workers for
+`std::thread` (`-DBEMAN_EMSCRIPTEN_PTHREAD_POOL_SIZE=<n>`, default 8), and C++ exceptions
+(`-DBEMAN_EMSCRIPTEN_EXCEPTIONS=OFF` for `-fno-exceptions`, which Emscripten
+otherwise uses by default). Modules are not used for WebAssembly.
 
 ### Supported Platforms
 

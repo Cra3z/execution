@@ -157,6 +157,32 @@
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       }
+    },
+    {
+      "name": "wasm-debug",
+      "displayName": "WebAssembly (Emscripten) Debug Build",
+      "inherits": [
+        "_root-config",
+        "_debug-base"
+      ],
+      "cacheVariables": {
+        "BEMAN_USE_MODULES": false,
+        "BEMAN_USE_STD_MODULE": false,
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/infra/cmake/emscripten-toolchain.cmake"
+      }
+    },
+    {
+      "name": "wasm-release",
+      "displayName": "WebAssembly (Emscripten) Release Build",
+      "inherits": [
+        "_root-config",
+        "_release-base"
+      ],
+      "cacheVariables": {
+        "BEMAN_USE_MODULES": false,
+        "BEMAN_USE_STD_MODULE": false,
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/infra/cmake/emscripten-toolchain.cmake"
+      }
     }
   ],
   "buildPresets": [
@@ -224,6 +250,20 @@
       "inherits": [
         "_root-build"
       ]
+    },
+    {
+      "name": "wasm-debug",
+      "configurePreset": "wasm-debug",
+      "inherits": [
+        "_root-build"
+      ]
+    },
+    {
+      "name": "wasm-release",
+      "configurePreset": "wasm-release",
+      "inherits": [
+        "_root-build"
+      ]
     }
   ],
   "testPresets": [
@@ -277,6 +317,16 @@
       "name": "msvc-release",
       "inherits": "_test_base",
       "configurePreset": "msvc-release"
+    },
+    {
+      "name": "wasm-debug",
+      "inherits": "_test_base",
+      "configurePreset": "wasm-debug"
+    },
+    {
+      "name": "wasm-release",
+      "inherits": "_test_base",
+      "configurePreset": "wasm-release"
     }
   ],
   "workflowPresets": [
@@ -413,6 +463,40 @@
         {
           "type": "test",
           "name": "msvc-release"
+        }
+      ]
+    },
+    {
+      "name": "wasm-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "wasm-debug"
+        },
+        {
+          "type": "build",
+          "name": "wasm-debug"
+        },
+        {
+          "type": "test",
+          "name": "wasm-debug"
+        }
+      ]
+    },
+    {
+      "name": "wasm-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "wasm-release"
+        },
+        {
+          "type": "build",
+          "name": "wasm-release"
+        },
+        {
+          "type": "test",
+          "name": "wasm-release"
         }
       ]
     }

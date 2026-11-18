@@ -24,7 +24,9 @@ set(CMAKE_SKIP_TEST_ALL_DEPENDENCY OFF)
 
 # gersemi: off
 option(CMAKE_EXPORT_COMPILE_COMMANDS "Prepare run-clang-tidy" ${PROJECT_IS_TOP_LEVEL})
-if(CMAKE_EXPORT_COMPILE_COMMANDS)
+# NOTE: not for Emscripten: re-adding its implicit include dirs as -I puts the
+# sysroot's C headers in front of libc++'s own wrappers (<cerrno> fails to compile).
+if(CMAKE_EXPORT_COMPILE_COMMANDS AND NOT EMSCRIPTEN)
     message(
         STATUS
         "CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES=${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}"

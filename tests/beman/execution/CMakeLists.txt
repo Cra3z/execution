@@ -143,7 +143,9 @@ foreach(test ${execution_tests})
         target_link_libraries(${TEST_EXE} PRIVATE beman::execution_headers)
     endif()
     target_compile_definitions(${TEST_EXE} PRIVATE NOMINMAX)
-    add_test(NAME ${TEST_EXE} COMMAND $<TARGET_FILE:${TEST_EXE}>)
+    # NOTE: use the target name (not $<TARGET_FILE:...>): only then CMake applies
+    # CMAKE_CROSSCOMPILING_EMULATOR, e.g. node for WebAssembly.
+    add_test(NAME ${TEST_EXE} COMMAND ${TEST_EXE})
 endforeach()
 
 # Disable ThreadSanitizer for this specific test target (Clang only)

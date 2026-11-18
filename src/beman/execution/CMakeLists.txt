@@ -489,6 +489,13 @@ if(BEMAN_USE_MODULES)
     )
 endif()
 
+# WebAssembly: std::thread/std::atomic wait need shared memory, i.e. -pthread has
+# to be used consistently for compiling and linking everything that uses us.
+if(EMSCRIPTEN)
+    target_compile_options(${BEMAN_EXECUTION_TARGET_NAME} INTERFACE -pthread)
+    target_link_options(${BEMAN_EXECUTION_TARGET_NAME} INTERFACE -pthread)
+endif()
+
 get_property(
     DETAIL_HEADER_FILES
     TARGET ${BEMAN_EXECUTION_TARGET_NAME}
