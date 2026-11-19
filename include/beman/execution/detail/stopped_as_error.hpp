@@ -13,29 +13,44 @@ import std;
 #include <utility>
 #endif
 #ifdef BEMAN_HAS_MODULES
+import beman.execution.detail.default_impls;
 import beman.execution.detail.forward_like;
 import beman.execution.detail.just;
 import beman.execution.detail.let;
 import beman.execution.detail.make_sender;
+import beman.execution.detail.mapped_attrs;
 import beman.execution.detail.movable_value;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.sender_for;
+import beman.execution.detail.set_error;
+import beman.execution.detail.set_stopped;
 import beman.execution.detail.set_value;
 #else
+#include <beman/execution/detail/default_impls.hpp>
 #include <beman/execution/detail/forward_like.hpp>
 #include <beman/execution/detail/just.hpp>
 #include <beman/execution/detail/let.hpp>
 #include <beman/execution/detail/make_sender.hpp>
+#include <beman/execution/detail/mapped_attrs.hpp>
 #include <beman/execution/detail/movable_value.hpp>
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor_closure.hpp>
 #include <beman/execution/detail/sender_for.hpp>
+#include <beman/execution/detail/set_error.hpp>
+#include <beman/execution/detail/set_stopped.hpp>
 #include <beman/execution/detail/set_value.hpp>
 #endif
 
 namespace beman::execution::detail {
 struct stopped_as_error_t {
+    struct impls_for : ::beman::execution::detail::default_impls {
+        static constexpr auto get_attrs = [](const auto&, const auto& child) noexcept {
+            return ::beman::execution::detail::make_mapped_attrs<::beman::execution::set_stopped_t,
+                                                                 ::beman::execution::set_error_t>(child);
+        };
+    };
+
     template <::beman::execution::detail::sender_for<stopped_as_error_t> Sndr, typename Env>
     auto transform_sender(::beman::execution::set_value_t, Sndr&& sndr, Env&&) const noexcept {
         auto&& data  = sndr.template get<1>();

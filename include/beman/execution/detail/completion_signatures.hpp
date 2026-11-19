@@ -9,6 +9,7 @@
 import std;
 #else
 #include <concepts>
+#include <cstddef>
 #include <type_traits>
 #endif
 #ifdef BEMAN_HAS_MODULES
@@ -38,7 +39,7 @@ struct completion_signatures {
         using type = Tag;
     };
     template <typename Tag>
-    static constexpr bool count_of(Tag) {
+    static constexpr ::std::size_t count_of(Tag) {
         return (::std::same_as<typename completion_signatures_tag<Signatures>::type, Tag> + ... + 0);
     }
     template <typename Fun>

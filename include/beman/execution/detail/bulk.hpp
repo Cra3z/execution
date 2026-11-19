@@ -25,6 +25,7 @@ import beman.execution.detail.forward_like;
 import beman.execution.detail.fwd_env;
 import beman.execution.detail.get_completion_signatures;
 import beman.execution.detail.make_sender;
+import beman.execution.detail.mapped_attrs;
 import beman.execution.detail.meta.combine;
 import beman.execution.detail.meta.unique;
 import beman.execution.detail.product_type;
@@ -45,6 +46,7 @@ import beman.execution.detail.set_value;
 #include <beman/execution/detail/fwd_env.hpp>
 #include <beman/execution/detail/get_completion_signatures.hpp>
 #include <beman/execution/detail/make_sender.hpp>
+#include <beman/execution/detail/mapped_attrs.hpp>
 #include <beman/execution/detail/meta_combine.hpp>
 #include <beman/execution/detail/meta_unique.hpp>
 #include <beman/execution/detail/product_type.hpp>
@@ -70,7 +72,7 @@ struct bulk_traits<true, F, Shape, Args...> { // for bulk_chunked
 
     static auto invoke(F& fn, Shape shape, Args&... args) noexcept(is_nothrow_invocable) -> void {
         if (shape > static_cast<Shape>(0)) [[likely]] {
-            ::std::invoke(fn, 0, shape, args...);
+            ::std::invoke(fn, static_cast<Shape>(0), Shape(shape), args...);
         }
     }
 };
@@ -83,7 +85,7 @@ struct bulk_traits<false, F, Shape, Args...> { // for bulk_unchunked
 
     static auto invoke(F& fn, Shape shape, Args&... args) noexcept(is_nothrow_invocable) -> void {
         for (auto i = static_cast<Shape>(0); i < shape; ++i) {
-            ::std::invoke(fn, i, args...);
+            ::std::invoke(fn, Shape(i), args...);
         }
     }
 };
@@ -101,12 +103,34 @@ struct bulk_transform_signatures<IsChunked, F, Shape, ::beman::execution::comple
         : ::std::bool_constant<
               ::beman::execution::detail::bulk_traits<IsChunked, F, Shape, Args...>::is_nothrow_invocable> {};
 
+    static constexpr bool may_throw = (!is_nothrow<Sigs>::value || ...);
+
     using type = ::beman::execution::detail::meta::unique<::beman::execution::detail::meta::combine<
         ::beman::execution::completion_signatures<Sigs...>,
         ::std::conditional_t<
-            (... && is_nothrow<Sigs>::value),
-            ::beman::execution::completion_signatures<>,
-            ::beman::execution::completion_signatures<::beman::execution::set_error_t(::std::exception_ptr)>>>>;
+            may_throw,
+            ::beman::execution::completion_signatures<::beman::execution::set_error_t(::std::exception_ptr)>,
+            ::beman::execution::completion_signatures<>>>>;
+};
+
+template <bool IsChunked>
+struct bulk_attrs_impl {
+    template <typename Shape, typename Fun>
+    struct exception_source {
+        using source_tag = ::beman::execution::set_value_t;
+
+        template <typename, typename Signatures, typename...>
+        static consteval bool may_throw() {
+            return ::beman::execution::detail::bulk_transform_signatures<IsChunked, Fun, Shape, Signatures>::may_throw;
+        }
+    };
+
+    template <typename Policy, typename Shape, typename Fun, typename Child>
+    auto operator()(const ::beman::execution::detail::product_type<Policy, Shape, Fun>&,
+                    const Child& child) const noexcept {
+        using value_t = ::beman::execution::set_value_t;
+        return ::beman::execution::detail::make_mapped_attrs<value_t, value_t, exception_source<Shape, Fun>>(child);
+    }
 };
 
 template <bool IsChunked>
@@ -160,6 +184,8 @@ struct bulk_algo_t {
     }
 
     struct impls_for : ::beman::execution::detail::default_impls {
+        static constexpr ::beman::execution::detail::bulk_attrs_impl<IsChunked> get_attrs{};
+
         struct complete_impl {
             template <typename Index,
                       typename Policy,
@@ -205,6 +231,10 @@ using bulk_chunked_t = ::beman::execution::detail::bulk_algo_t<true>;
 using bulk_unchunked_t = ::beman::execution::detail::bulk_algo_t<false>;
 
 struct bulk_t {
+    struct impls_for : ::beman::execution::detail::default_impls {
+        static constexpr ::beman::execution::detail::bulk_attrs_impl<false> get_attrs{};
+    };
+
     template <typename Policy, typename Shape, typename F>
         requires(::beman::execution::is_execution_policy_v<::std::remove_cvref_t<Policy>> && ::std::integral<Shape> &&
                  ::std::copy_constructible<::std::decay_t<F>>)

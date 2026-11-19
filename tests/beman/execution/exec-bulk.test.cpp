@@ -575,6 +575,20 @@ auto test_bulk_customization() {
 }
 #endif
 
+auto test_bulk_completion_attributes() {
+    test_std::run_loop loop;
+    test_std::prop     env{test_std::get_start_scheduler, loop.get_scheduler()};
+    auto               verify = [&](const auto& sndr) {
+        auto attrs = test_std::get_env(sndr);
+        ASSERT(test_std::get_completion_scheduler<test_std::set_error_t>(attrs, env) == loop.get_scheduler());
+        static_assert(std::same_as<decltype(test_std::get_completion_domain<test_std::set_error_t>(attrs, env)),
+                                   test_std::default_domain>);
+    };
+    verify(test_std::bulk(test_std::just(), test_std::seq, 1, [](int) {}));
+    verify(test_std::bulk_chunked(test_std::just(), test_std::seq, 1, [](int, int) {}));
+    verify(test_std::bulk_unchunked(test_std::just(), test_std::seq, 1, [](int) {}));
+}
+
 auto test_bulk_attributes() {
     // est_std::bulk(test_std::par, vec.size(), [&](std::size_t i) noexcept { result[i] = vec[i] * 2; }));
     test::sender_env s{42};
@@ -596,6 +610,7 @@ auto test_bulk_attributes() {
 } // namespace
 
 TEST(exec_bulk) {
+    test_bulk_completion_attributes();
 
     BEMAN_EXECUTION_TRY {
 

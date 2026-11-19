@@ -18,6 +18,7 @@ import beman.execution.detail.basic_sender;
 import beman.execution.detail.child_type;
 import beman.execution.detail.completion_signatures;
 import beman.execution.detail.completion_signatures_for;
+import beman.execution.detail.completion_signatures_of_t;
 import beman.execution.detail.decayed_tuple;
 import beman.execution.detail.default_impls;
 import beman.execution.detail.dependent_sender;
@@ -28,7 +29,9 @@ import beman.execution.detail.error_types_of_t;
 import beman.execution.detail.fwd_env;
 import beman.execution.detail.impls_for;
 import beman.execution.detail.make_sender;
+import beman.execution.detail.mapped_attrs;
 import beman.execution.detail.meta.combine;
+import beman.execution.detail.meta.unique;
 import beman.execution.detail.sender;
 import beman.execution.detail.sender_adaptor_closure;
 import beman.execution.detail.sender_in;
@@ -41,6 +44,7 @@ import beman.execution.detail.variant_or_empty;
 #else
 #include <beman/execution/detail/child_type.hpp>
 #include <beman/execution/detail/completion_signatures_for.hpp>
+#include <beman/execution/detail/completion_signatures_of_t.hpp>
 #include <beman/execution/detail/decayed_tuple.hpp>
 #include <beman/execution/detail/default_impls.hpp>
 #include <beman/execution/detail/dependent_sender.hpp>
@@ -51,7 +55,9 @@ import beman.execution.detail.variant_or_empty;
 #include <beman/execution/detail/fwd_env.hpp>
 #include <beman/execution/detail/impls_for.hpp>
 #include <beman/execution/detail/make_sender.hpp>
+#include <beman/execution/detail/mapped_attrs.hpp>
 #include <beman/execution/detail/meta_combine.hpp>
+#include <beman/execution/detail/meta_unique.hpp>
 #include <beman/execution/detail/sender.hpp>
 #include <beman/execution/detail/sender_adaptor_closure.hpp>
 #include <beman/execution/detail/sender_in.hpp>
@@ -79,7 +85,28 @@ struct into_variant_t : ::beman::execution::sender_adaptor_closure<into_variant_
     template <typename... E>
     using make_error_types = ::beman::execution::completion_signatures<::beman::execution::set_error_t(E)...>;
 
-  private:
+    template <typename>
+    struct tuple_construction_may_throw : ::std::false_type {};
+    template <typename... Args>
+    struct tuple_construction_may_throw<::beman::execution::set_value_t(Args...)>
+        : ::std::bool_constant<
+              !::std::is_nothrow_constructible_v<::beman::execution::detail::decayed_tuple<Args...>, Args...> ||
+              !::std::is_nothrow_move_constructible_v<::beman::execution::detail::decayed_tuple<Args...>>> {};
+
+    template <typename... Signatures>
+    static consteval bool value_conversion_may_throw(::beman::execution::completion_signatures<Signatures...>) {
+        return (tuple_construction_may_throw<Signatures>::value || ...);
+    }
+
+    struct exception_source {
+        using source_tag = ::beman::execution::set_value_t;
+
+        template <typename, typename Signatures, typename...>
+        static consteval bool may_throw() {
+            return value_conversion_may_throw(Signatures{});
+        }
+    };
+
     template <typename, typename...>
     struct get_signatures;
     template <typename Sender>
@@ -99,12 +126,17 @@ struct into_variant_t : ::beman::execution::sender_adaptor_closure<into_variant_
                 ::beman::execution::completion_signatures<::beman::execution::set_value_t(variant_type)>>;
 
             using error_types = ::beman::execution::error_types_of_t<Child, env_t, make_error_types>;
+            using exception_type =
+                ::std::conditional_t<value_conversion_may_throw(
+                                         ::beman::execution::completion_signatures_of_t<Child, env_t>{}),
+                                     make_error_types<::std::exception_ptr>,
+                                     ::beman::execution::completion_signatures<>>;
             using stopped_types =
                 ::std::conditional_t<::beman::execution::sends_stopped<Child, env_t>,
                                      ::beman::execution::completion_signatures<::beman::execution::set_stopped_t()>,
                                      ::beman::execution::completion_signatures<>>;
-            using type = ::beman::execution::detail::meta::
-                combine<value_types, ::beman::execution::detail::meta::combine<error_types, stopped_types>>;
+            using type = ::beman::execution::detail::meta::unique<
+                ::beman::execution::detail::meta::combine<value_types, error_types, exception_type, stopped_types>>;
             return type{};
         }
     };
@@ -116,11 +148,17 @@ struct into_variant_t : ::beman::execution::sender_adaptor_closure<into_variant_
         return get_signatures<::std::remove_cvref_t<Sender>, Env...>::get();
     }
     struct impls_for : ::beman::execution::detail::default_impls {
+        static constexpr auto get_attrs = [](const auto&, const auto& child) noexcept {
+            using value_t = ::beman::execution::set_value_t;
+            return ::beman::execution::detail::make_mapped_attrs<value_t, value_t, exception_source>(child);
+        };
+
         struct get_state_impl {
             template <typename Sender, typename Receiver>
-            auto operator()(Sender&&, Receiver&&) const noexcept -> ::std::type_identity<
-                ::beman::execution::value_types_of_t<::beman::execution::detail::child_type<Sender>,
-                                                     ::beman::execution::env_of_t<Receiver>>> {
+            auto operator()(Sender&&, Receiver&&) const noexcept
+                -> ::std::type_identity<::beman::execution::value_types_of_t<
+                    ::beman::execution::detail::child_type<Sender>,
+                    ::beman::execution::detail::fwd_env_t<::beman::execution::env_of_t<Receiver>>>> {
                 return {};
             }
         };

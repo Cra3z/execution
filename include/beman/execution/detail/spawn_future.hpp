@@ -276,19 +276,18 @@ class spawn_future_t {
     }
 
   private:
-    template <typename, typename>
+    template <typename>
     struct get_signatures;
-    template <typename State, typename Deleter, typename Env>
+    template <typename State, typename Deleter>
     struct get_signatures<::beman::execution::detail::basic_sender<::beman::execution::detail::spawn_future_t,
-                                                                   ::std::unique_ptr<State, Deleter>>,
-                          Env> {
+                                                                   ::std::unique_ptr<State, Deleter>>> {
         using type = typename State::sigs_t;
     };
 
   public:
-    template <typename Sender, typename... Env>
+    template <typename Sender, typename...>
     static consteval auto get_completion_signatures() {
-        return typename get_signatures<std::remove_cvref_t<Sender>, Env...>::type{};
+        return typename get_signatures<std::remove_cvref_t<Sender>>::type{};
     }
     struct impls_for : ::beman::execution::detail::default_impls {
         struct start_impl {

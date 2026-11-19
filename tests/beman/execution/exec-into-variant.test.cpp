@@ -18,10 +18,15 @@ import beman.execution;
 #else
 #include <beman/execution/detail/into_variant.hpp>
 #include <beman/execution/detail/connect.hpp>
+#include <beman/execution/detail/get_completion_domain.hpp>
+#include <beman/execution/detail/get_completion_scheduler.hpp>
 #include <beman/execution/detail/just.hpp>
+#include <beman/execution/detail/prop.hpp>
 #include <beman/execution/detail/receiver.hpp>
 #include <beman/execution/detail/operation_state.hpp>
+#include <beman/execution/detail/run_loop.hpp>
 #include <beman/execution/detail/sender.hpp>
+#include <beman/execution/detail/then.hpp>
 #endif
 
 // ----------------------------------------------------------------------------
@@ -131,6 +136,26 @@ auto test_into_variant_attributes() {
     test::test_sender_env<true>(42, test::test_forwardable_attr{}, test_std::into_variant(s));
     test::test_sender_env<false>(84, test::test_non_forwardable_attr{}, test_std::into_variant(s));
 }
+
+auto test_into_variant_completion_attributes() {
+    struct arg {
+        arg() = default;
+        arg(const arg&) noexcept(false) {}
+    };
+    const arg value{};
+    auto      sndr =
+        test_std::just() | test_std::then([&]() noexcept -> const arg& { return value; }) | test_std::into_variant;
+
+    test_std::run_loop loop;
+    test_std::prop     env{test_std::get_start_scheduler, loop.get_scheduler()};
+    auto               attrs = test_std::get_env(sndr);
+    ASSERT(test_std::get_completion_scheduler<test_std::set_error_t>(attrs, env) == loop.get_scheduler());
+    static_assert(std::same_as<decltype(test_std::get_completion_domain<test_std::set_error_t>(attrs, env)),
+                               test_std::default_domain>);
+    static_assert(std::same_as<test_std::completion_signatures_of_t<decltype(sndr), decltype(env)>,
+                               test_std::completion_signatures<test_std::set_value_t(std::variant<std::tuple<arg>>),
+                                                               test_std::set_error_t(std::exception_ptr)>>);
+}
 } // namespace
 
 TEST(exec_into_variant) {
@@ -171,4 +196,5 @@ TEST(exec_into_variant) {
                                                   test_std::set_stopped_t()>>{});
 
     test_into_variant_attributes();
+    test_into_variant_completion_attributes();
 }

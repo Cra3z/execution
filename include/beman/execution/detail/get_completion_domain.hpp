@@ -42,6 +42,7 @@ template <typename Tag = void>
 struct get_completion_domain_t : ::beman::execution::forwarding_query_t {
     template <typename Q, typename... E>
     static auto impl(Q&& q, E&&... e) noexcept {
+        static_assert(sizeof...(E) <= 1uz);
         if constexpr (requires {
                           ::beman::execution::detail::try_query(
                               ::std::forward<Q>(q), get_completion_domain_t<Tag>{}, ::std::forward<E>(e)...);
